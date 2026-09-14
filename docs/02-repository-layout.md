@@ -117,7 +117,7 @@ entrypoint (real implementations) and a test (fakes), with no container.
 web/
   src/
     api/
-      <client>.generated       GENERATED typed client + types. Never hand-edited.
+      <client>.generated       GENERATED, git-ignored. Never hand-edited.
       core/                    transport: auth token, headers, errors, timeouts
       <feature>Api.ts          hand-written wrappers ONLY for non-JSON transports
     components/                shared and feature components
@@ -161,7 +161,7 @@ mobile/
     store/                   state stores, one per concern, plus their tests
     sync/                    sync orchestration, queues, caches, diagnostics
     api/
-      <client>.generated     GENERATED. Same generator as the web client.
+      <client>.generated     GENERATED, git-ignored. Same generator as the web client.
       client.ts              transport wrapper: auth, retries, base URL
     auth/
     hooks/
@@ -191,11 +191,18 @@ shared/
 ```
 
 The manifest is the single source that the client generators read. It is generated from
-the backend source. Nothing hand-written lives under `generated/`.
+the backend source. Nothing hand-written lives under `generated/`, and **nothing under
+`generated/` is tracked** — the whole directory is ignored.
 
-**Security note:** if any generated artifact feeds a runtime authorization or privacy
-decision, list it explicitly in the repository's agent rules as security-relevant, and
-gate it in CI on every pull request. See [06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 6.
+**Ignore the directory, not the files.** A rule listing each generated file by name stops
+covering the next one somebody adds, and that file then lands in a commit. One rule per
+generated directory, plus a rule for the `*.generated.*` suffix wherever generated files
+sit beside hand-written ones.
+
+**Security note:** where a generated artifact feeds a runtime authorization or privacy
+decision, the deploy generates it and **fails** if generation fails. It never falls back
+to a previously built copy. See
+[06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 6.
 
 ---
 
@@ -230,19 +237,20 @@ Rules:
 
 - The tree is clean before work starts. Uncommitted changes that are not yours are a
   question for the owner, never something to stash or absorb.
-- **Exception:** modified or untracked *generated* artifacts do not make a tree dirty.
-  Work with them and commit them when convenient.
-- **Carve-out to that exception:** generated artifacts that carry security meaning
-  (authorization tables, privacy classifications, route maps) are never waved through as
-  "just codegen". If one changes, confirm it matches the source change you intended and
-  commit it in the same commit.
+- **Generated artifacts never appear in the tree's status at all**, because they are
+  ignored. If one shows up as untracked, the ignore rule is wrong — fix the ignore rule
+  rather than committing the file.
+- A generated file that has been hand-edited is invisible under this rule, because
+  nothing tracks it. The protection is that it is **overwritten on the next build**, so a
+  hand-edit cannot survive to a deploy. Do not work around that by disabling the
+  generation step.
 
 ---
 
 ## 8. What does NOT go in the repository
 
 - Real secrets, in any form, including in test fixtures and in comments.
-- Build output, unless it is a committed generated artifact named in § 5.
+- Build output, and every generated artifact named in § 5. All of it is ignored.
 - Log files, test result XML, screenshots from ad-hoc runs, editor state. Add them to
   the ignore file the first time one appears; a repository root that accumulates
   hundreds of stray run logs makes every listing useless and hides real files.

@@ -133,7 +133,7 @@ Same rules, same folder. Typical set:
 | `Broadcaster` | Publish a typed event to connected clients. |
 | `QueuePublisher` | Enqueue a typed message for out-of-process work. |
 | `UserDirectory` | Resolve identifiers to display names and roles. |
-| `Clock` | Only if something needs time beyond the request's "now". |
+| `Clock` | Reading time. Required wherever a use case needs more than the request's single "now" — successive readings, a timeout comparison, a scheduled window. |
 | `IdentityProviderAdmin` | Group membership, password resets, and similar. |
 
 **The file-bytes rule:** bytes live in object storage; the database row holds a key.
@@ -156,16 +156,47 @@ export class NotFoundError extends AppError    { status = 404; }
 export class ConflictError extends AppError    { status = 409; }
 ```
 
-Rules:
+The alternative shape, equally valid, is a result object declaring its failures on the
+response type:
 
-- Each distinct failure gets its own error **value** with its own message. Not one
-  generic error per class. The client needs a real branch to message, and a test needs
-  an assertion that only one failure satisfies.
+```ts
+export interface CancelOrderResponse {
+  successful: boolean;
+  errors: CancelOrderError[];          // 'OrderNotFound' | 'AlreadyShipped' | ...
+  order: CancelOrderResponse_Order | null;
+}
+```
+
+That form puts the failures **in the contract**, so the generated client sees them and the
+caller can be made to handle each one. Where the language makes exhaustive matching cheap,
+prefer it. Pick one shape per project and never mix them.
+
+Rules, whichever shape you chose:
+
+- Each distinct failure gets its own **value** with its own message. Not one generic
+  failure per class. The client needs a real branch to message, and a test needs an
+  assertion that only one failure satisfies.
 - The message is written for a user, not for a developer. `"An order that has shipped
   cannot be cancelled."` — not `"INVALID_STATE"`.
 - A conflict caused by a name or slug someone else already took is a **409 with an
   actionable message**, never a 403. A 403 tells the user they are not allowed; the
   truth is that a different name would work.
+
+### 3.1.1 Unexpected failures are not modelled
+
+An expected failure is one the use case was written to produce. Everything else — an
+unreachable store, a null nobody anticipated, a bug — is an **exception, and it is
+allowed to propagate**. The entrypoint catches it, reports it with the request id, and
+returns a 500 carrying that id and nothing else.
+
+Do not add an `UnknownError` value to the declared set to avoid throwing. It gives the
+caller nothing to do and moves a real defect into the normal path, where nobody looks at
+it.
+
+The thing to avoid is the middle case: **an ad-hoc error thrown to signal a failure the
+use case knew about.** That is an expected outcome dressed as a crash — it reaches the
+client as a 500, it cannot be branched on, and it fills the error reports with failures
+that are working as designed.
 
 ### 3.2 Roles
 
@@ -196,7 +227,7 @@ export interface RequestContext {
   userEmail: string | null;
   userRoles: readonly string[];
   tenantId: string;              // see 08-multi-tenancy
-  nowIso: string;                // the single source of "now"
+  nowIso: string;                // the request's "now", read once at the entrypoint
   clientVersion?: string;        // for compatibility decisions
   cookies?: Record<string, string>;
   setCookies?: string[];         // mutable; use cases append
@@ -205,8 +236,15 @@ export interface RequestContext {
 
 Rules:
 
-- `nowIso` is set once, at the entrypoint, per request. A use case never calls the
-  clock.
+- `nowIso` is read once, at the entrypoint, per request, so every use case in that
+  request agrees on the value. It covers the common case: one timestamp written to one or
+  more rows.
+- **Where a use case needs more than that — successive readings, a timeout comparison, a
+  window that advances — inject a `Clock` port.** That is not a violation of anything; it
+  is the same rule one level up. What is banned is reading the *ambient* clock, which a
+  test cannot replace.
+- **Do not put a `Clock` on the context.** The context is data; collaborators are
+  constructor parameters.
 - The context is **built from verified claims**, never from a request body or a
   client-supplied header that is not itself verified. See [18-security-and-privacy](18-security-and-privacy.md).
 - Do not put a service, a repository, or a logger on the context. Those are constructor

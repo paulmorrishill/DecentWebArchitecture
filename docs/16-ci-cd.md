@@ -22,8 +22,9 @@ Before reading code, before planning, before editing:
 1. Fetch the integration branch.
 2. Measure: current branch, commits behind and ahead, working-tree status.
 3. **Ask the owner what working tree to use**, with a fixed set of options, and wait.
-4. Settle uncommitted changes in the same question. A file that is not a generated
-   artifact is a second question, not a detail.
+4. Settle uncommitted changes in the same question. Every file in the status is somebody's
+   work — generated files are ignored and never appear there — so each one is a second
+   question, not a detail.
 
 Never merge, rebase, force-push, reset, stash, or discard someone's work to "get current"
 without being told to. Fetching and reporting is safe; changing the working tree is not.
@@ -57,7 +58,7 @@ Keep them separate by concern, and keep the trigger of each one deliberate:
 
 | Pipeline | Trigger | Job |
 |---|---|---|
-| Contract artifacts | **every pull request** | regenerate and fail on a diff |
+| Contract check | **every pull request** | generate; fail on a violation; report the contract difference against the base |
 | Unit and integration tests | integration branch, release branch, manual | all packages |
 | End-to-end | manual, after a block of merges | the full browser suite |
 | Deploy API | push to the branch owning the environment | build, deploy, migrate |
@@ -124,7 +125,9 @@ particular browser, more I/O than a shared virtual machine gives:
 For each package, in this order:
 
 1. Install.
-2. **Generate** contract artifacts and fail on a diff.
+2. **Generate** the contract artifacts, and fail on a contract violation. This runs
+   before typecheck, because nothing downstream compiles until the generated client
+   exists — a fresh checkout has none of it.
 3. Typecheck — with the project's real typecheck command.
 4. Lint.
 5. Unit tests.
@@ -148,9 +151,11 @@ Then, separately: the end-to-end suite, and the infrastructure plan.
 
 ### 4.1 API
 
-1. Build every bundle. Confirm each expected artifact exists.
-2. Regenerate the contract artifacts and fail on a diff — again, because this pipeline
-   may be the one that matters.
+1. **Generate the contract artifacts from the revision being deployed.** Fail the deploy
+   if generation fails. Never fall back to a cached or previously built copy: a missing
+   authorization table means no deploy, not an open endpoint.
+2. Build every bundle, from those generated files. Confirm each expected artifact exists.
+   Generate once and build from it — not once for the tests and again for the package.
 3. Publish each function or container.
 4. Run migrations, if the project uses them, from a single entrypoint.
 5. Smoke-check: call one cheap, unauthenticated endpoint on the API host and assert a

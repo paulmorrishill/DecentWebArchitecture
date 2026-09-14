@@ -55,7 +55,7 @@ export function buildRequestContext(event: TransportEvent): RequestContext {
     userEmail: claims.email ?? null,
     userRoles: parseRoles(claims),
     tenantId: resolveTenant(event, claims),
-    nowIso: new Date().toISOString(),          // the ONE clock read in the system
+    nowIso: clock.nowIso(),                    // the request's single "now"
     clientVersion: event.headers['x-client-version'],
     cookies: parseCookies(event),
     setCookies: [],
@@ -69,7 +69,9 @@ Rules:
   unverified header.
 - A header that lets a privileged caller act in another tenant is honoured **only after**
   the role check that permits it. See [08-multi-tenancy](08-multi-tenancy.md).
-- `nowIso` is set here and nowhere else.
+- `nowIso` is read here, once per request. The entrypoint holds the one `Clock`
+  implementation; a use case that needs to read time again takes that same `Clock` as a
+  constructor parameter rather than calling an ambient date function.
 
 ---
 
@@ -93,9 +95,13 @@ return ok(result);
   security-relevant ([06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 6).
 - **The privacy gate** runs on the response for endpoints classified as returning
   personal data, before the response leaves.
-- **Typed errors map to statuses here.** Any other thrown error becomes a 500, is
-  reported with its request id, and returns a body that names the request id and nothing
-  else.
+- **Declared failures map to statuses here** — a typed error to its status, or a result
+  object's error list to the status the contract says it carries.
+- **Anything else that reaches the entrypoint becomes a 500**, is reported with its
+  request id, and returns a body naming that request id and nothing else. That is the
+  designed path for an unexpected exception, not a fallback: a use case is allowed to let
+  an unforeseen failure propagate, and the entrypoint is the one place that turns it into
+  a response and a report.
 
 ---
 

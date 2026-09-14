@@ -136,8 +136,8 @@ Before opening a pull request:
 - [ ] Typecheck passes. **Use the project's real typecheck command** — a
       partially-configured one can check nothing and report success.
 - [ ] Lint clean.
-- [ ] Generated artifacts regenerated, and the tree clean *after* the regeneration.
-- [ ] No hand-edits to any generated file.
+- [ ] Generation ran, and reported no contract violation.
+- [ ] No hand-edits to any generated file. They are overwritten on the next build.
 
 ---
 

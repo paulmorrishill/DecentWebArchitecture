@@ -118,17 +118,22 @@ Once a guard in the backend package reads infrastructure or pipeline files, a ch
 
 ---
 
-## 3. Contract-artifact checks in CI
+## 3. Contract checks in CI
 
-Distinct from both suites and run on **every pull request**, because the deploy may not
-wait for anything else:
+Generated artifacts are not committed, so there is no diff to check and no stale copy to
+catch. Two checks replace it, both on **every pull request**:
 
-1. Run the generator.
-2. Fail on any diff in the generated artifacts.
+1. **Generation runs and reports no contract violation.** This is part of the ordinary
+   build, so it is not a separate job — but it must run before typecheck, because the
+   client types do not exist until it has.
+2. **A contract-difference report** between the base revision and the head revision:
+   endpoints added and removed, roles changed, privacy classifications changed, contract
+   fields added and removed. Fail the check on a role or privacy change the pull request
+   body does not name.
 
-This catches the change that edited a decorator and did not regenerate. Where a generated
-artifact feeds a runtime authorization or privacy decision, this check is the only thing
-between a source change and a deployed system that still enforces the old rule.
+The second is what a reviewer reads. It is produced by the same extractor the build uses,
+it is expressed in terms of the contract rather than of regenerated source, and it cannot
+be hand-edited into agreement.
 
 See [06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 6.
 

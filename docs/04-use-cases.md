@@ -139,11 +139,24 @@ Return as early as possible on failure. Do not wrap the happy path in a conditio
 a balancing else — validate, return, and let the happy path run at the top level of the
 method.
 
+The example above throws typed errors because that is the shape this reference picked. In
+a project that chose the result-object shape
+([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1), each step above
+returns a failed response carrying its own error value instead. The order and the
+early-return discipline are the same.
+
+**Every failure in that list is a declared outcome.** An unexpected exception — a store
+that is unreachable, a bug — is left to propagate and becomes a 500 at the entrypoint.
+Do not catch it here to convert it into a declared failure; that hides a defect on the
+normal path.
+
 ### 3.2 No I/O except through ports
 
 - No vendor SDK client imported into a use case, ever.
 - No direct network call.
-- No clock read — `context.nowIso`.
+- No **ambient** clock read. Use `context.nowIso` for the request's single "now", or an
+  injected `Clock` port where the use case genuinely needs to read time more than once.
+  A global date function is the thing that is banned, not time itself.
 - No file-system access.
 - Identifier generation via the standard UUID/ULID function is allowed and expected.
 
@@ -283,8 +296,8 @@ one release.
 | Rename a field | Add the new one, populate both, drop the old one in a later release. |
 | Change a field's type | Never in place. Add a new field; let the old one wither. |
 | Rename an endpoint | Keep the old route as a thin forwarder for one release. |
-| Tighten roles | Ship it, but re-check that the generated authorization table was regenerated and committed — a stale one keeps the old, looser rule. |
+| Tighten roles | Safe. The authorization table is generated at deploy time, so it cannot lag the source. |
 | Widen roles | Re-audit the response for data the newly-permitted role must not see. |
 
-**Every one of these needs the generated artifacts regenerated and committed in the same
-commit.**
+**Every one of these needs the generator re-run locally before the typecheck will
+see it.** Nothing is committed; the deploy generates its own copy.

@@ -48,8 +48,9 @@ differ, that difference marks a swap point rather than a rule.
 
 1. The dependency rule (§ [01-principles](docs/01-principles.md)).
 2. One use case per endpoint, with its own request and response types (§ [04-use-cases](docs/04-use-cases.md)).
-3. The API contract is generated from the code, and the generated artifacts are
-   committed and gated (§ [06-api-contract-and-codegen](docs/06-api-contract-and-codegen.md)).
+3. The API contract is generated from the code, on every build and every deploy, and the
+   generated files are never committed
+   (§ [06-api-contract-and-codegen](docs/06-api-contract-and-codegen.md)).
 4. Use-case tests use in-memory fakes of ports, not a mocking framework aimed at
    repositories (§ [11-testing-unit](docs/11-testing-unit.md)).
 5. End-to-end tests drive the real UI against a real backend with no faked API
@@ -139,9 +140,10 @@ If the agent reads nothing else:
 2. **Every endpoint owns its request and response types, and shares them with nobody.**
    It looks like duplication. It is the reason a change to one endpoint cannot silently
    change another.
-3. **The API contract, the client, and the route table are generated from the code and
-   committed.** A hand-edited generated file is a security incident waiting to be read
-   as a merge conflict.
+3. **The API contract, the client, and the route table are generated from the code on
+   every build, and never committed.** Committing them puts a merge conflict on every
+   branch that touches a contract, and a conflict resolved by hand is how a generated
+   file stops matching its source.
 4. **A test is not evidence until it has been seen to fail for the right reason.** A
    green suite over a vacuous assertion is worse than no suite, because it reads as
    coverage.

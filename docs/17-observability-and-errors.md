@@ -150,13 +150,24 @@ missing to grep — only output that is quietly incomplete.
 | Forbidden | 403 | code | no |
 | Not found | 404 | code | no |
 | Conflict | 409 | code + what to do instead | no |
-| Unhandled | 500 | request id only | yes, with full detail |
+| Unexpected | 500 | request id only | yes, with full detail |
+
+The first five are **declared** failures — the use case was written to produce them, and
+the client branches on them. The last is everything else: an exception the use case did
+not anticipate, allowed to propagate, caught here.
 
 Rules:
 
-- **Each distinct failure gets its own code and message.** A single lumped error on the
+- **Each declared failure gets its own code and message.** A single lumped error on the
   server guarantees a single lumped message in the client, and a test assertion that more
   than one path satisfies.
+- **A declared failure is never reported as an error.** A validation rejection is the
+  system working. Reporting it buries the real failures in noise.
+- **An unexpected failure is always reported**, with the request id that the caller was
+  given, so a support conversation can find it.
+- **Do not convert an unexpected failure into a declared one to keep the reports quiet.**
+  An `UnknownError` in the declared set gives the caller nothing to act on and moves a
+  real defect onto the normal path.
 - A collision on a name someone else has taken is a **409 with an actionable message** —
   never a 403. A 403 says "you are not allowed"; the truth is that a different name
   would work.

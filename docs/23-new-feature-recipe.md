@@ -134,7 +134,7 @@ constrained, write the ADR **in this pull request**. ([20-decision-records](20-d
 - [ ] Integration tests green.
 - [ ] Client component tests green.
 - [ ] New end-to-end specs green, three runs, retries disabled.
-- [ ] Generated artifacts regenerated; tree clean **after** the run.
+- [ ] Generation ran and reported no contract violation.
 - [ ] Infrastructure plan reviewed, if touched.
 - [ ] [22-pitfalls-checklist](22-pitfalls-checklist.md) walked for every area touched.
 - [ ] ADR included, if the feature made a decision worth recording.

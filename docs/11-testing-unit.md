@@ -80,9 +80,10 @@ describe('CreateOrderUseCase', () => {
 9. **No arrange/act/assert comments.** Blank lines separate the phases. The test name and
    the body are the documentation.
 10. **No shared mutable state between tests.** Everything is constructed per test.
-11. **No network, no database, no file system, no clock.** If the unit under test needs
-    one, either it has the wrong dependencies or the test belongs in the integration
-    suite.
+11. **No network, no database, no file system, and no ambient clock.** Time comes from
+    the frozen `nowIso` on the context, or from a fake `Clock` the test controls. If the
+    unit under test reaches for any of these directly, either it has the wrong
+    dependencies or the test belongs in the integration suite.
 
 ### 2.1 Builders
 

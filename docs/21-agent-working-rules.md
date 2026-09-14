@@ -209,7 +209,8 @@ output.** Evidence before assertion, every time.
 - [ ] The tests ran. The counts match what was expected. New assertions have been seen to
       fail for the right reason.
 - [ ] The end-to-end specs for the change ran more than once with retries disabled.
-- [ ] Generated artifacts were regenerated and the tree is clean **after** the run.
+- [ ] Generation ran and reported no contract violation. No generated file is in the
+      diff, because none is tracked.
 - [ ] The infrastructure plan was read, if infrastructure changed.
 - [ ] The pitfalls checklist was walked for the areas touched.
 
