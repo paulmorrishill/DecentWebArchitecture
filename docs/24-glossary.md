@@ -1,0 +1,48 @@
+# 24 — Glossary
+
+| Term | Meaning |
+|---|---|
+| **Aggregate** | A domain entity plus the things that only exist inside it. The unit a repository owns. |
+| **Application layer** | Use cases, ports, services, events. Knows the domain; never knows the infrastructure. |
+| **Backfill** | An idempotent, re-runnable script that brings existing rows to a new shape. |
+| **Blast radius** | Every consumer of a symbol, type, table, or endpoint being changed. Mapped before a refactor. |
+| **Composition root** | The one place per deployable that reads configuration, constructs everything, and wires it. |
+| **Contract** | The request and response types of one endpoint. The only thing a client knows about the server. |
+| **Contract manifest** | The machine-readable description of every endpoint and its contract, extracted from source. |
+| **Dependency rule** | The application layer never imports the infrastructure layer. The rule everything else depends on. |
+| **Discovery sentinel** | A test that fails when a new thing of a known kind has no fixture — the thing that stops the next table being added without a test. |
+| **Domain entity** | A plain data type describing what is persisted. No behaviour, no I/O. Never appears in a contract. |
+| **Double** | Any stand-in for a real collaborator in a test: a fake, a stub, a mock. |
+| **End-to-end suite** | Browser-driven tests against the real interface and a real backend. No faked API responses. |
+| **Entrypoint** | The transport-aware layer: request handler, worker, scheduled job, local host. |
+| **Fake** | A working in-memory implementation of a port, used in unit tests. Preferred over a mock for repositories. |
+| **Fire-and-forget** | Work started without waiting for it. On a serverless host, frozen when the handler returns. |
+| **Generated artifact** | A file produced by a script from the source of truth. Committed, never hand-edited, gated in CI. |
+| **Guard test** | A unit test that reads a file from another language — infrastructure, pipeline configuration, a generated artifact — and asserts agreement. |
+| **Idempotent** | Safe to run twice. Required of every worker and every operational script. |
+| **In-place update** | An infrastructure change that modifies a resource rather than replacing it. The only acceptable kind for a stateful resource. |
+| **Integration test** | A test of a repository against a real or emulated store. Not a test of business rules. |
+| **Load-bearing** | An argument or key part whose value actually changes the result — proven by mutating it and watching a test go red. |
+| **Mutation (testing)** | Deliberately breaking production code to confirm a test can fail. |
+| **Namespace** | A group of related endpoints. The first segment of an RPC path. |
+| **No-op implementation** | A stand-in satisfying an interface and doing nothing. Must announce itself at startup when selected by configuration. |
+| **Outbox** | A row written in the same transaction as a state change, consumed by a worker that performs the side effect. |
+| **Page object** | A class wrapping the elements and flows of one screen for end-to-end tests. |
+| **Partial success** | A tool that exited zero and did less than it was asked. Verified by reading its product, not its exit code. |
+| **Patch width** | How many lines or sites a mutation actually changed. Reported with every mutation count. |
+| **Port** | An interface the application declares for something outside it. Implemented by the infrastructure layer. |
+| **Pre-production** | The deployed environment fed by the integration branch. Real cloud, disposable data. |
+| **Privacy classification** | The required per-endpoint declaration of whether a response can carry personal data. Extracted into a runtime gate. |
+| **Repository** | The infrastructure implementation of a persistence port. |
+| **Request context** | The per-request data every use case receives: identity, roles, tenant, "now". |
+| **Route table** | The generated dispatcher table mapping namespace and method to a use case and its required roles. Security-relevant. |
+| **Scoped repository** | A repository whose base class enforces tenant isolation on every read and write. |
+| **Silent no-op** | Work that never ran, with no error, because it was detached, unwired, or replaced by a no-op. |
+| **Simulator** | A local stand-in for an external service, used by the local host and the end-to-end suite. |
+| **Structural guard** | See guard test. |
+| **Tautological assertion** | An assertion satisfied by more than one outcome of the code under test. Proves nothing. |
+| **Tenant** | The isolation boundary for data. Most rows carry one; global data is a written-down exception. |
+| **Test identifier** | A stable attribute on an element, the only permitted selector in end-to-end tests. |
+| **Two-state control** | Anything that opens and closes, expands and collapses, enables and disables. Both directions are tested. |
+| **Use case** | One user-facing intent: one class, one execute method, one request type, one response type, one endpoint. |
+| **Vacuous test** | A test that stays green when the behaviour it names is broken. Worse than no test, because it reads as coverage. |
