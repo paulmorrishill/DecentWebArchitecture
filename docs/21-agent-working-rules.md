@@ -2,6 +2,13 @@
 
 Copy this into the new repository as the agent instructions file the harness reads.
 
+The sections below exist as separate drop-in fragments, already project-neutral, at
+**[paulmorrishill/ClaudeAnnoyanceReduction](https://github.com/paulmorrishill/ClaudeAnnoyanceReduction)**
+— `claude-md/working-discipline.md` (§ 1), `writing-style.md` (§ 2),
+`start-of-work-branch-rule.md` (§ 3.1), `background-task-monitoring.md` (§ 1.4), and
+`CLAUDE.template.md` for the assembled file. Take them from there rather than retyping
+this.
+
 These rules are about **how the work is done and reported**, not about the code. They
 exist because an agent's failure modes are different from a human's: it stops early, it
 reports success it has not verified, it predicts durations it cannot know, and it

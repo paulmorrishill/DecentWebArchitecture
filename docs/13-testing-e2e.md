@@ -6,6 +6,11 @@ journey.
 
 Copy this file into the new repository as `web/tests/e2e/GUIDE.md`.
 
+For checking an existing suite against these rules rather than writing to them, the
+`e2e-coverage-validation` skill in
+**[paulmorrishill/ClaudeAnnoyanceReduction](https://github.com/paulmorrishill/ClaudeAnnoyanceReduction)**
+audits coverage and reports the gaps.
+
 ---
 
 ## 1. Hard rules

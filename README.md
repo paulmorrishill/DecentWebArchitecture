@@ -100,6 +100,27 @@ Copy these into the new repository and keep them updated as the project learns:
 
 The rest stay as the specification they are.
 
+### 2.4 Ready-made agent-instruction fragments
+
+The working rules in this set exist as drop-in fragments, project-neutral and already
+written for a harness to read:
+
+**[paulmorrishill/ClaudeAnnoyanceReduction](https://github.com/paulmorrishill/ClaudeAnnoyanceReduction)**
+
+| Fragment there | Section here |
+|---|---|
+| `claude-md/CLAUDE.template.md` | the assembled instructions file |
+| `claude-md/working-discipline.md` | [21-agent-working-rules](docs/21-agent-working-rules.md) § 1 |
+| `claude-md/writing-style.md` | [21-agent-working-rules](docs/21-agent-working-rules.md) § 2 |
+| `claude-md/start-of-work-branch-rule.md` | [21-agent-working-rules](docs/21-agent-working-rules.md) § 3.1, [16-ci-cd](docs/16-ci-cd.md) § 1.1 |
+| `claude-md/background-task-monitoring.md` | [21-agent-working-rules](docs/21-agent-working-rules.md) § 1.4 |
+| `skills/adversarial-bug-hunt/` | [22-pitfalls-checklist](docs/22-pitfalls-checklist.md) |
+| `skills/e2e-coverage-validation/` | [13-testing-e2e](docs/13-testing-e2e.md) |
+| `skills/design-insufficiency/` | [23-new-feature-recipe](docs/23-new-feature-recipe.md) § 0.2 |
+
+Start a new project from those fragments rather than retyping the rules; this set is the
+architecture they are applied to.
+
 ---
 
 ## 3. The index

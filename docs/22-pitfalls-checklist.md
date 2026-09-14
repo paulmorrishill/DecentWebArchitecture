@@ -4,6 +4,12 @@ Copy this into the new repository as `PITFALLS.md`. **Append a section every tim
 of defect reaches a deployed environment.** A checklist that never grows is a checklist
 nobody is learning from.
 
+This is the list you walk deliberately. For an active search — pointing an agent at a diff
+and asking it to find what the list does not name yet — the `adversarial-bug-hunt` skill in
+**[paulmorrishill/ClaudeAnnoyanceReduction](https://github.com/paulmorrishill/ClaudeAnnoyanceReduction)**
+carries a bug-class catalogue and a workflow. New classes it finds belong back in this
+file.
+
 Walk the relevant sections before opening a pull request, before claiming a task is
 complete, and before merging.
 

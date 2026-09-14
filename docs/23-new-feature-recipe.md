@@ -15,7 +15,13 @@ answer. ([21-agent-working-rules](21-agent-working-rules.md) § 3.1)
 ### 0.2 Harden the specification
 
 A feature described in a sentence is not ready to build. Answer these before writing
-anything, and take the ones only the owner can answer back to them:
+anything, and take the ones only the owner can answer back to them.
+
+For an adversarial pass over a specification — the failure modes a design does not yet
+account for — the `design-insufficiency` skill in
+**[paulmorrishill/ClaudeAnnoyanceReduction](https://github.com/paulmorrishill/ClaudeAnnoyanceReduction)**
+runs archetypes, detectors and personas against it. Use it before the checklist, not
+instead of it.
 
 - [ ] **Problem.** What is wrong today, for whom?
 - [ ] **Actors.** Who can ask for this behaviour to be different? List them, write each
