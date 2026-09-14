@@ -131,7 +131,7 @@ Rules:
    value in the type's domain, including the edges — a leap day, a daylight-saving
    transition, the zero duration, the maximum representable instant.
 4. **Converters never throw for an expected input.** An unparseable value arriving from a
-   client is a validation failure with a message, not a 500.
+   client is a declared failure on the endpoint — its own error value — not a 500.
 5. **One serializer for the whole backend.** Two serializers with two registries is the
    same defect as two wire formats.
 

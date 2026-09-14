@@ -47,6 +47,27 @@ complete, and before merging.
       any other client-supplied value. Identity and roles come from the verified token
       only.
 
+## 4a. Declared failures
+
+- [ ] Every failure the use case was written to produce is a value in that endpoint's own
+      error enumeration. None of them is an exception, a transport status, or a message.
+- [ ] **No user-facing text leaves the backend.** No sentence written for a user, no
+      message field on a failure, no formatted string for display, no pluralisation, no
+      date or currency formatting.
+- [ ] Where the client needs data to build its message — the conflicting name, the allowed
+      range — it arrives as a named field, not as interpolated prose.
+- [ ] Each distinct failure has its own value. No lumped failure, and no `UnknownError`
+      added to keep the error reports quiet.
+- [ ] A value is named for the condition, not the remedy.
+- [ ] A name already taken gets its own value, never a permission failure.
+- [ ] The error enumeration is owned by one endpoint and shared with no other.
+- [ ] An unexpected exception is left to propagate. Nothing catches it to turn it into a
+      declared failure.
+- [ ] The response status is 200 for every completed call, successful or not. Non-2xx only
+      for the role gate, a missing route, a malformed body, and an unexpected exception.
+- [ ] On the client: every value in the enumeration is handled, each with its own message
+      in the client's copy layer, and no raw error code is rendered as user copy.
+
 ## 4b. Ambient state
 
 - [ ] `execute` takes one argument. No context object reappeared, under any name.
@@ -136,8 +157,8 @@ The tool ran, returned success, and did less than it was asked.
 - [ ] "Never consulted" is proven with a **throw-on-call** double; "consulted but
       immaterial" with an identifier-aware double plus a mutation that still passes. The
       two are labelled distinctly.
-- [ ] No bare error-class assertion where several errors of that class reach the call.
-      Assert the message.
+- [ ] No assertion of the form "the errors array contains one of these" where more than
+      one failure reaches the call. Assert the exact array.
 
 ## 6f/6g. The instrument lied
 
@@ -324,6 +345,7 @@ Shorter rules with no incident behind them yet.
 | Situation | Sections |
 |---|---|
 | Any backend pull request | 1–6c, 8 |
+| Any new or changed endpoint | 4, 4a, 4b |
 | Any pull request adding or editing a test | 6d, 6e |
 | Any reported measurement | 6f/6g |
 | A refactor | 7, plus everything |

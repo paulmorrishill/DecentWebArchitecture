@@ -18,6 +18,10 @@ A feature described in a sentence is not ready to build. Answer these before wri
 anything, and take the ones only the owner can answer back to them:
 
 - [ ] **Problem.** What is wrong today, for whom?
+- [ ] **Actors.** Who can ask for this behaviour to be different? List them, write each
+      piece of work as `<Actor> <verb> <object>`, and take one use case per item. Two
+      actors on one item means two use cases.
+      ([04-use-cases](04-use-cases.md) § 3.5)
 - [ ] **Scope.** What is explicitly out?
 - [ ] **Acceptance criteria.** What observable behaviour proves it is done?
 - [ ] **Data.** What rows are created? What is the key shape, and where does the key value

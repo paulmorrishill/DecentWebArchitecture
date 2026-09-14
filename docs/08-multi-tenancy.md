@@ -50,9 +50,14 @@ at most one row per tenant.
 ### 2.3 Writes are guarded
 
 `save` checks the row's existing tenant before overwriting. A cross-tenant overwrite
-raises a distinct ownership-violation error that never reaches a client as-is — it is a
-programming error, reported and turned into a 404 or a 409 depending on what the caller
-was asking for.
+raises a distinct ownership-violation error. **That error is a programming error, not a
+domain answer**: it is reported, and it reaches the caller as an unexpected failure. It is
+never translated into a declared error value, because doing so tells the caller their
+request was understood and refused, when in fact the code asked the wrong question.
+
+Where a collision between tenants is a *legitimate* outcome rather than a defect — a
+user-chosen name in a global namespace — that is a declared error value on the endpoint,
+produced by an explicit check before the write, not by catching the guard. See § 6.
 
 Bulk writes need per-item conditions to keep that guarantee. Do not replace a
 transactional bulk write with a cheaper unconditional one to save cost; the safety
@@ -130,9 +135,10 @@ but the directory in their URL.
 ## 6. Primary-key shape
 
 **A scoped table whose primary key is a caller-supplied value is broken until you prove
-otherwise.** Two tenants pick the same value, address the same row, and the second
-write hits the ownership guard — which the user sees as a bare 403 with no hint that a
-different name would work.
+otherwise.** Two tenants pick the same value, address the same row, and the second write
+hits the ownership guard — which surfaces as an unexpected failure, because that is what an
+ownership violation is. The user is told nothing useful, and the one thing that would have
+helped — that a different name would work — is the one thing the system cannot say.
 
 For every new or changed scoped table, state in the pull request where the key comes
 from:

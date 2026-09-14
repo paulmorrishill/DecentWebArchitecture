@@ -129,10 +129,11 @@ For each new table, state where the key value comes from:
 | User identity | State deliberately whether that identity can repeat across scopes. |
 | Externally-owned identifier (a third-party record id, a map feature id) | Shared across scopes by definition. Must be scoped. |
 
-The failure this prevents: two tenants choose the same name, address the same row, and
-the second one's write hits an ownership guard that surfaces as a bare 403 with no hint
-that a different name would work. The guard is defence in depth. It is not a substitute
-for a key that cannot collide.
+The failure this prevents: two tenants choose the same name, address the same row, and the
+second one's write hits an ownership guard. The guard raises an ownership violation, which
+is a programming error rather than a domain answer — so the caller gets a failure that
+does not mean "that name is taken", and no hint that a different name would work. The
+guard is defence in depth. It is not a substitute for a key that cannot collide.
 
 **Scoping a caller-chosen key:** prefix it with the tenant at the repository boundary
 only — encode in `toRow`, decode in `toEntity`. The caller-facing identifier stays plain

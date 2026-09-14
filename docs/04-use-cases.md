@@ -192,21 +192,72 @@ Yes, it is duplication. It is the cost of statically extracting the contract wit
 executing the code. Add a guard test that fails when they disagree — the extractor has
 both values, so the check is cheap.
 
-### 3.5 One responsibility
+### 3.5 A use case serves one actor
 
-One use case is one intent. Symptoms that you have two:
+**An actor is whoever can change their mind on their own** and ask for this behaviour to
+be different. A person in a role, or another system. Not a screen, not a table, not a
+framework, and not a class.
+
+**One use case serves exactly one actor.** Two actors means two independent reasons for
+the same code to change, and a change requested by one of them then has to be made without
+breaking the other — in a file neither of them owns.
+
+Actors are roles, not people. One person can be two actors at different moments, with
+different interests, and that still splits the use case.
+
+#### The test
+
+For the use case in front of you, **name the one actor who can request a change to it.**
+
+| Names | Verdict |
+|---|---|
+| One | Correct. |
+| Two or more | Split it, or write down why you are not and what it costs. |
+| None | It is not a use case. It is a service, a mapper, or a helper. |
+
+#### Deriving use cases from actors
+
+When a feature arrives as prose, do this before writing any contract:
+
+1. List the actors.
+2. For each actor, list the work they ask the system to do.
+3. Write each item as `<Actor> <verb> <object>` — "Reviewer approves submission",
+   "Scheduler cancels expired hold".
+4. One use case per item.
+5. Check each one against the test above, and split where two names appear.
+
+This produces the endpoint list, the names, and the authorization boundaries in one pass,
+and it produces them from the domain rather than from the screen that happens to be
+getting built first.
+
+#### The failure it prevents
+
+The shape is always the same: one class named for a *thing* rather than for a *request* —
+`ManageOrder`, `HandleBooking`, `ProcessSubmission`. Several actors' needs accumulate in
+it, each guarded by a flag, and eventually a change for one actor breaks another's path
+because the two share a branch neither of them asked for.
+
+#### Secondary signals
+
+Once you have the actor test, these are symptoms of failing it rather than rules of their
+own:
 
 - a mode or type discriminator in the request,
 - a boolean parameter that switches behaviour,
 - a response whose fields are populated in two mutually exclusive groups,
 - a name containing "And" or "Or",
-- a constructor taking more than about three of the ambient-state ports. A use case that
-  needs the caller, their roles, the tenant, the clock and the client version is usually
-  doing an authorization decision that belongs in the dispatcher plus a piece of work.
+- a name containing "Manage", "Handle", or "Process",
+- a constructor taking more than about three of the ambient-state ports.
 
-Composition happens through services and ports, not by bundling. "Create the order,
-email the customer, write the audit entry" is one use case calling three collaborators,
-each of which does one thing — not one use case containing three blocks.
+#### Splitting is not bundling
+
+Composition happens through services and ports, not by bundling. "Create the order, email
+the customer, write the audit entry" is **one** use case — one actor, the customer, asking
+for one thing — calling three collaborators that each do one thing. It is not three
+blocks in one method, and it is not three use cases.
+
+The question is never how many steps the work takes. It is how many people can ask for the
+work to be different.
 
 ### 3.6 Side effects report their own failures
 
@@ -274,10 +325,12 @@ Rules specific to reads:
 
 - A read with no parameters still has a named empty request type. An endpoint with no
   request type is a hole in the generator.
-- A read that returns "one or nothing" returns `{ order: X | null }`, not a 404, unless
-  the caller genuinely cannot proceed — a page that renders "not found" wants the null,
-  a direct fetch of a known id wants the 404. Decide per endpoint and be consistent
-  within a namespace.
+- **A read that finds nothing is not a transport failure.** It returns a successful
+  response with a null payload, or with an error value where the caller needs to
+  distinguish "does not exist" from "exists and you may not see it". Never a 404 — the
+  transport's 404 means the endpoint does not exist, and a client cannot tell the two
+  apart. Decide per endpoint which of the two shapes you want, and be consistent within a
+  namespace.
 - Never apply a row limit *before* a filter that runs after the store returns. If the
   store's index is a wider namespace than the filter, the limit applies to the wrong
   set and the caller gets nothing. See [22-pitfalls-checklist](22-pitfalls-checklist.md) § "Collapsing a set".

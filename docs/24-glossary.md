@@ -2,6 +2,7 @@
 
 | Term | Meaning |
 |---|---|
+| **Actor** | Whoever can change their mind on their own and ask for a behaviour to be different — a person in a role, or another system. One use case serves exactly one. |
 | **Aggregate** | A domain entity plus the things that only exist inside it. The unit a repository owns. |
 | **Application layer** | Use cases, ports, services, events. Knows the domain; never knows the infrastructure. |
 | **Backfill** | An idempotent, re-runnable script that brings existing rows to a new shape. |
