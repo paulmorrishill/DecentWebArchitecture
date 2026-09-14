@@ -160,7 +160,8 @@ whose resolver has no tenant context. Where that is right:
 
 1. Document the invariant — why global is correct and what stops one tenant reading
    another's data through it.
-2. Map a collision to a **409 with an actionable message**. Never let an ownership
+2. Give the collision its own error value on the affected endpoints — `SlugAlreadyTaken` —
+   so the client can tell the user a different name would work. Never let an ownership
    violation reach the client.
 
 ### 6.2 Changing a key shape strands existing rows

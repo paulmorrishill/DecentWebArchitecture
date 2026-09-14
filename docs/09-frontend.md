@@ -50,10 +50,19 @@ Rules:
 2. **Never call the transport directly from a component.** Components call a hook or a
    service; the hook or service calls the client.
 3. **Every call has a timeout.** Set it in the transport core, once.
-4. **Handle every error branch explicitly**, with a specific, human-readable message.
-   Banned: a catch-all "Something went wrong" that collapses distinct failures; an error
-   branch left unhandled; a raw error code shipped as user copy. When the server adds a
-   new error value, every consumer gains a matching real message.
+4. **The client owns every word the user reads.** The backend sends error *values*, not
+   messages ([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1.1), so
+   this is the only place the copy exists. Map each value in the endpoint's error
+   enumeration to its own message, in the client's copy layer — which is also where the
+   locale and the tenant's configurable terminology are.
+
+   Banned: a catch-all "Something went wrong" collapsing distinct failures; an error value
+   left unhandled; a **raw error code rendered as user copy** — `OrderAlreadyShipped` on a
+   screen is the same defect as a backend message, arriving from the other direction.
+
+5. **A new error value is a compile error, deliberately.** The generated enumeration grows,
+   the exhaustive map stops being exhaustive, and the build tells you which screen needs a
+   new sentence. Do not add a default branch to silence it.
 
 ---
 

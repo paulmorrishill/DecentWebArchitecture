@@ -43,9 +43,15 @@ describe('CreateOrderUseCase', () => {
 
   it('rejects an order with no lines above zero quantity', async () => {
     const useCase = new CreateOrderUseCase(emptyRepository(), stubPricing(), caller, clock);
-    await expect(
-      useCase.execute({ customerId: 'cust-1', lines: [{ productId: 'p1', quantity: 0 }] }),
-    ).rejects.toThrow('An order needs at least one line');
+
+    const response = await useCase.execute({
+      customerId: 'cust-1',
+      lines: [{ productId: 'p1', quantity: 0 }],
+    });
+
+    expect(response.successful).toBe(false);
+    expect(response.errors).toEqual(['NoLinesWithQuantity']);
+    expect(response.order).toBeNull();
   });
 });
 ```
@@ -77,7 +83,8 @@ They are two lines each and every use-case test uses them.
 6. **Cover every branch.** Happy path, every validation failure, not-found, permission
    denial, downstream failure, and each side of every conditional, coalescing operator,
    and early return.
-7. **Assert on the typed error and its message**, not just its class. See § 4.
+7. **Assert the exact error values**, as a whole array, not "contains one of". A failure
+   asserted as a set the code could produce more than one way is a tautology (§ 4).
 8. **A mocking framework is for services and external integrations.** Repositories get
    in-memory implementations. A mocked repository asserts a method was *called*; an
    in-memory one asserts the *state that resulted*.
@@ -184,7 +191,8 @@ meaningful.
 
 ### 5.3 Bare error-class assertions
 
-`rejects.toThrow(ValidationError)` where more than one validation failure can reach the
+An assertion of the form "the errors array contains one of these" where more than one
+failure can reach the
 same call cannot tell the failure it is named for from any other. Assert the message the
 input forces, or the specific condition.
 

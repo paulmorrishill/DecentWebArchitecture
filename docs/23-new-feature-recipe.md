@@ -95,7 +95,8 @@ constrained, write the ADR **in this pull request**. ([20-decision-records](20-d
 3. **After a mutation, refresh the collection that receives the item.** (§ 3.1)
 4. **A control that writes disables itself for the duration**, with the guard at the top
    of the handler. (§ 5)
-5. **Handle every error branch** with a specific, actionable message.
+5. **Handle every value in the endpoint's error enumeration**, each mapped to its own
+   message in the client's own copy. The backend sends no text.
 6. **Add test identifiers** to every element a test will touch. (§ 8)
 7. **Component tests**: logic tests for the model, a rendering test for anything the
    template decides. (§ 9)

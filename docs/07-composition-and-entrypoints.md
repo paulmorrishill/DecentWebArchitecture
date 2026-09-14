@@ -119,8 +119,9 @@ The dispatcher reads identity and roles from the same ports the use cases use. I
   security-relevant ([06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 6).
 - **The privacy gate** runs on the response for endpoints classified as returning
   personal data, before the response leaves.
-- **Declared failures map to statuses here** — a typed error to its status, or a result
-  object's error list to the status the contract says it carries.
+- **A declared failure is not an error here.** It is a successful call whose response says
+  `successful: false` with its error values. The entrypoint returns 200 and does not report
+  it. See [03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1.
 - **Anything else that reaches the entrypoint becomes a 500**, is reported with its
   request id, and returns a body naming that request id and nothing else. That is the
   designed path for an unexpected exception, not a fallback: a use case is allowed to let
@@ -232,9 +233,11 @@ correctly wired in the deployed system.
 
 One module, used by every entrypoint.
 
-- Success: status 200, JSON body, the contract response.
-- Typed error: the mapped status, a body carrying a machine-readable code and a
-  user-readable message.
+- Any completed call, successful or not: status 200 and the contract response. A declared
+  failure is carried in that body as `successful: false` plus its error values — it is not
+  an error at this layer.
+- Refused before the use case ran: 401 or 403 from the role gate, 404 for no such route,
+  400 for a body that is not the declared shape. A machine-readable code, no prose.
 - Unhandled error: 500, the request id, and nothing else. The detail goes to the error
   reporter.
 - Cross-origin headers come from one place, derived from configuration, and are covered

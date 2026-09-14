@@ -145,22 +145,26 @@ missing to grep — only output that is quietly incomplete.
 
 | Kind | Status | Body | Reported? |
 |---|---|---|---|
-| Validation | 400 | code + user-readable message | no |
-| Unauthenticated | 401 | code | no |
-| Forbidden | 403 | code | no |
-| Not found | 404 | code | no |
-| Conflict | 409 | code + what to do instead | no |
+| Declared domain failure | 200 | `successful: false` + the endpoint's error values | no |
+| Not authenticated (role gate) | 401 | code | no |
+| Role denied (role gate) | 403 | code | no |
+| No such route | 404 | code | no |
+| Malformed request, not the declared shape | 400 | code | no |
 | Unexpected | 500 | request id only | yes, with full detail |
 
-The first five are **declared** failures — the use case was written to produce them, and
-the client branches on them. The last is everything else: an exception the use case did
-not anticipate, allowed to propagate, caught here.
+Only the first row is a **domain** answer. Everything below it is the transport saying
+something about the request itself — who is calling, whether the route exists, whether the
+body parsed — or the system admitting it broke. A domain failure never borrows a transport
+status, because a 404 for "no such order" is indistinguishable from a 404 for "the endpoint
+was renamed", and the client cannot tell which one it got.
 
 Rules:
 
-- **Each declared failure gets its own code and message.** A single lumped error on the
-  server guarantees a single lumped message in the client, and a test assertion that more
-  than one path satisfies.
+- **Each declared failure gets its own value.** A single lumped failure on the server
+  guarantees a single lumped message in the client, and a test assertion that more than one
+  path satisfies.
+- **No user-facing text leaves the backend.** The value is a code; the client owns the
+  words. See [03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1.1.
 - **A declared failure is never reported as an error.** A validation rejection is the
   system working. Reporting it buries the real failures in noise.
 - **An unexpected failure is always reported**, with the request id that the caller was
@@ -168,9 +172,9 @@ Rules:
 - **Do not convert an unexpected failure into a declared one to keep the reports quiet.**
   An `UnknownError` in the declared set gives the caller nothing to act on and moves a
   real defect onto the normal path.
-- A collision on a name someone else has taken is a **409 with an actionable message** —
-  never a 403. A 403 says "you are not allowed"; the truth is that a different name
-  would work.
+- A collision on a name someone else has taken gets its own error value — never a
+  permission failure. The client renders one as "choose another" and the other as "you are
+  not allowed", and only one of them is true.
 - A 500's body carries the request id and nothing else. The detail is in the report.
 
 ---

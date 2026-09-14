@@ -140,8 +140,9 @@ everywhere above the repository: entities, use cases, URLs, and the contract mus
 change shape.
 
 **A deliberately global namespace** (a public short link, a publicly resolvable slug)
-must say so in writing and must return a **409 conflict with an actionable message**, not
-a 403.
+must say so in writing and must return its own error value — `SlugAlreadyTaken` — not an
+ownership failure. The client renders one as "choose another name" and the other as "you
+are not allowed", and only one of them is true.
 
 **Changing an existing table's key shape strands every existing row.** Read both shapes
 during the transition (scoped first, bare second), ship a re-key script alongside, and
@@ -194,7 +195,7 @@ export class InMemoryOrderRepository implements OrderRepository {
   private readonly rows = new Map<string, OrderEntity>();
 
   async createOrder(record: CreateOrderRecord): Promise<void> {
-    if (this.rows.has(record.orderId)) throw new ConflictError('Order already exists.');
+    if (this.rows.has(record.orderId)) throw new DuplicateKeyError(record.orderId);
     this.rows.set(record.orderId, { ...record });
   }
 

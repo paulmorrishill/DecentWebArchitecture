@@ -154,60 +154,88 @@ Never a base64 blob in a table row.
 
 ## 3. Application common
 
-### 3.1 Errors
+### 3.1 Declared failures are error values on the response
 
-A closed set, defined once, each carrying its transport status.
-
-```ts
-// application/common/errors.ts
-export class ValidationError extends AppError  { status = 400; }
-export class UnauthorizedError extends AppError { status = 401; }
-export class ForbiddenError extends AppError   { status = 403; }
-export class NotFoundError extends AppError    { status = 404; }
-export class ConflictError extends AppError    { status = 409; }
-```
-
-The alternative shape, equally valid, is a result object declaring its failures on the
-response type:
+**A failure the use case was written to produce is a value in an enumeration on its own
+response contract. It carries no message.**
 
 ```ts
+export type CancelOrderError =
+  | 'OrderNotFound'
+  | 'OrderAlreadyShipped'
+  | 'OrderAlreadyCancelled'
+  | 'NotYourOrder';
+
 export interface CancelOrderResponse {
   successful: boolean;
-  errors: CancelOrderError[];          // 'OrderNotFound' | 'AlreadyShipped' | ...
+  errors: CancelOrderError[];
   order: CancelOrderResponse_Order | null;
 }
 ```
 
-That form puts the failures **in the contract**, so the generated client sees them and the
-caller can be made to handle each one. Where the language makes exhaustive matching cheap,
-prefer it. Pick one shape per project and never mix them.
+The failures are **in the contract**, so the generated client sees them, the compiler can
+require the caller to handle each one, and adding a value to the enumeration breaks every
+client that has not handled it — which is exactly the behaviour you want.
 
-Rules, whichever shape you chose:
+#### 3.1.1 No user-facing text in the backend
 
-- Each distinct failure gets its own **value** with its own message. Not one generic
-  failure per class. The client needs a real branch to message, and a test needs an
-  assertion that only one failure satisfies.
-- The message is written for a user, not for a developer. `"An order that has shipped
-  cannot be cancelled."` — not `"INVALID_STATE"`.
-- A conflict caused by a name or slug someone else already took is a **409 with an
-  actionable message**, never a 403. A 403 tells the user they are not allowed; the
-  truth is that a different name would work.
+**The backend does not know what language the user reads.** It emits `OrderAlreadyShipped`.
+The client owns every word the user sees, because the client is where the locale, the
+tenant's terminology, the screen's tone and the available space all are.
 
-### 3.1.1 Unexpected failures are not modelled
+Banned in a use case, a service, or a repository:
 
-An expected failure is one the use case was written to produce. Everything else — an
-unreachable store, a null nobody anticipated, a bug — is an **exception, and it is
-allowed to propagate**. The entrypoint catches it, reports it with the request id, and
-returns a 500 carrying that id and nothing else.
+- a sentence written for a user — `'An order that has shipped cannot be cancelled.'`
+- a message field on a declared failure
+- a formatted string built from data for display
+- a pluralisation, a date format, a currency format
 
-Do not add an `UnknownError` value to the declared set to avoid throwing. It gives the
-caller nothing to do and moves a real defect into the normal path, where nobody looks at
-it.
+What the backend does emit alongside an error value, where the client genuinely cannot
+compute it:
 
-The thing to avoid is the middle case: **an ad-hoc error thrown to signal a failure the
-use case knew about.** That is an expected outcome dressed as a crash — it reaches the
-client as a 500, it cannot be branched on, and it fills the error reports with failures
-that are working as designed.
+- **structured data the client needs to build the message** — the conflicting name, the
+  offending line number, the minimum and maximum of a range. Named fields on the response,
+  not interpolated prose.
+- **content that is data rather than copy** — the body of a document, an article, a
+  user-entered note.
+
+The one genuine exception is text the backend **must** produce because the client is not
+there when it is produced: an email or a notification the server sends. That has its own
+templates, its own locale resolution, and its own tests. It is not an error message.
+
+#### 3.1.2 Rules
+
+- **Each distinct failure gets its own value.** Not one generic failure. A single lumped
+  value on the server guarantees a single lumped message in the interface, and a test
+  assertion that more than one path satisfies.
+- **Name the value for the condition, not for the remedy.** `NameAlreadyTaken`, not
+  `TryADifferentName`. The remedy is a client decision.
+- **A name that is already taken is `…AlreadyTaken`, never a permission failure.** The
+  distinction matters because the client renders one as "choose another" and the other as
+  "you are not allowed", and only one of them is true.
+- **Adding a value to an enumeration is a contract change.** Every client gains an
+  unhandled branch, deliberately. See [04-use-cases](04-use-cases.md) § 7.
+- **The transport status is about the transport.** A declared failure returns 200 with
+  `successful: false`; the failure is in the body, in the contract. Non-2xx is reserved
+  for the role gate at the dispatcher (401, 403), for a route that does not exist (404),
+  and for an unexpected exception (500). See
+  [07-composition-and-entrypoints](07-composition-and-entrypoints.md) § 3.
+
+#### 3.1.3 Unexpected failures are not modelled
+
+A declared failure is one the use case was written to produce. Everything else — an
+unreachable store, a null nobody anticipated, a bug — is an **exception, and it is allowed
+to propagate**. The entrypoint catches it, reports it with the request id, and returns a
+500 carrying that id and nothing else.
+
+- **Do not add an `UnknownError` value to an enumeration to avoid throwing.** It gives the
+  caller nothing to do and moves a real defect onto the normal path, where nobody looks at
+  it.
+- **Do not throw to signal a failure the use case knew about.** That is a declared outcome
+  dressed as a crash: it reaches the client as a 500, it cannot be branched on, and it
+  fills the error reports with failures that are working as designed.
+- Exceptions are therefore **never part of the contract**. Nothing declares which ones it
+  throws, because the answer is always "any".
 
 ### 3.2 Roles
 

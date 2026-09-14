@@ -21,10 +21,12 @@ Why RPC and not REST:
   pipeline depends on.
 - There is no debate about which verb or which status code expresses a domain outcome.
 
-Declared domain failures are carried in whichever shape the project chose in
-[03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1 — typed errors mapped
-to statuses at the entrypoint, or an error list on the response contract. An unexpected
-exception becomes a 500. Transport failures use the ordinary transport statuses.
+Declared domain failures ride in the response body as error values on the contract
+([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1), with a 2xx status —
+the call succeeded, the answer is "no". Non-2xx is reserved for the role gate, a route that
+does not exist, and an unexpected exception. That separation is the third reason to prefer
+RPC: the transport status says what happened to the *request*, never what happened in the
+*domain*.
 
 **Swap point:** REST or GraphQL can replace this, but then the extractor has to derive
 paths and methods from something, and the "one endpoint, one contract pair" rule has to
@@ -126,6 +128,8 @@ single bad contract from blocking every other developer while still failing the 
 7. **The privacy classification is present and is a literal.** Omitting it is a
    compile error; anything that is not a literal `true`/`false` fails extraction.
 8. **The decorator's roles and `getRequiredRoles()` agree.**
+9. **Every response declares its own `XxxError` enumeration**, shared with no other
+   endpoint, and no contract field carries user-facing prose.
 
 Each rule is a check in the extractor, not a line in a style guide. A rule nobody
 enforces is a rule nobody follows.
@@ -147,10 +151,9 @@ The generated client:
   URL, timeouts, error mapping) that the generator does not own,
 - is **never hand-edited**, is git-ignored, and is excluded from linting and formatting.
 
-Reference implementation B generates one class per use case with `execute`, plus static
-`mock()` and `nullResponse()` factories — the mock is what component tests inject, and
-the null response is what a cache initialises with. That is a good pattern where the
-front-end framework favours injected collaborators; adopt it or not per project.
+A generator can also emit, per endpoint, a `mock()` factory for component tests to inject
+and a `nullResponse()` factory for a cache to initialise with. Both are cheap to generate
+and remove a class of hand-written test scaffolding. Adopt them or not per project.
 
 ### 5.1 The transport core
 
@@ -163,7 +166,8 @@ Hand-written, one file, owns:
 - a request timeout — every call has one,
 - rehydrating the response into the client's value types before anything else sees it
   (see [25-typed-values-and-serialization](25-typed-values-and-serialization.md) § 6),
-- mapping a non-2xx response to the typed error the client code branches on,
+- mapping a non-2xx response to the transport failure the client code branches on —
+  declared failures arrive with a 2xx and are read from the response body,
 - the unauthenticated response: clear the credential, route to sign-in.
 
 The instance identifier is generated **once, here, at client start** — a random value held
@@ -270,8 +274,8 @@ There is no API version number. The contract's compatibility rules do the work
 
 **Client version.** The client sends its version; the entrypoint exposes it through the
 `ClientInfo` port. A use case may branch on it to keep an old client working, and a
-guard can refuse a client below a minimum supported version with an actionable message
-rather than a confusing failure.
+guard can refuse a client below a minimum supported version with a dedicated error value
+the client renders as an upgrade prompt, rather than a confusing failure.
 
 **Sync payload versioning.** Where a client persists server data locally
 ([10-mobile](10-mobile.md)), the payload carries a schema version. When the shape changes

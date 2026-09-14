@@ -137,19 +137,25 @@ taken. The caller may not do this. The state machine forbids it. These are outco
 use case was written to produce, so they are **declared**, and the caller branches on
 them.
 
-Two shapes, both valid — pick one per project and never mix them:
+**They are values in an enumeration on the use case's own response contract**, carried in
+an `errors` array alongside `successful`. Not exceptions, not statuses, and — this is the
+part people get wrong — **not messages**.
 
-- **A closed set of typed errors** the use case throws and the entrypoint maps to
-  statuses: `ValidationError → 400`, `UnauthorizedError → 401`, `ForbiddenError → 403`,
-  `NotFoundError → 404`, `ConflictError → 409`.
-- **A result object** carrying `successful` plus a list of error values declared on the
-  response type itself. Reference implementation B's choice, and the stronger one where
-  the language makes exhaustive matching cheap: the failures are in the contract, so the
-  generated client sees them and the compiler can require the caller to handle each.
+```ts
+export type CancelOrderError = 'OrderNotFound' | 'OrderAlreadyShipped' | 'NotYourOrder';
+```
 
-Either way, **each distinct failure gets its own value with its own message.** A single
-lumped "something went wrong" on the server guarantees a single lumped "something went
-wrong" in the interface, and a test assertion that more than one path satisfies.
+**No user-facing text comes out of the backend.** The backend does not know the reader's
+language, the tenant's terminology, the screen's tone, or the space available. It emits
+`OrderAlreadyShipped`; the client owns every word the user sees. A message string on a
+declared failure is a localisation bug and a duplicated-copy problem waiting to happen.
+
+The only text the backend produces is text the client is not present for — an email, a
+notification — which has its own templates and is content, not an error.
+
+**Each distinct failure gets its own value.** A single lumped failure on the server
+guarantees a single lumped message in the interface, and a test assertion that more than
+one path satisfies.
 
 **An unexpected failure is an exception, and it is allowed to propagate.** A store that
 is unreachable, a null nobody anticipated, a bug. The entrypoint catches whatever reaches

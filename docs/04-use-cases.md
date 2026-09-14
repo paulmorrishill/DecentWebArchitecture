@@ -22,9 +22,8 @@ when, and on whose behalf all arrive through constructor-injected ports
 ([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3), so a use case's
 constructor states exactly which ambient state it reads.
 
-Reference implementation B's equivalent is a per-use-case interface with a single
-`Execute(Request) → Response` method and a response object carrying `successful` plus a
-list of typed error values. Same shape, different error convention ([01-principles](01-principles.md) § 7).
+A synchronous `Execute(Request) → Response` is the same shape in a language where the I/O
+boundary is synchronous. Nothing else about the interface changes.
 
 ---
 
@@ -32,7 +31,6 @@ list of typed error values. Same shape, different error convention ([01-principl
 
 ```ts
 import { randomUUID } from 'node:crypto';
-import { ValidationError, NotFoundError } from '../../common/errors';
 import { roles, type Role } from '../../common/roles';
 import type { OrderEntity } from '../../../domain/entities/order';
 import type { OrderRepository } from '../../ports/order-repository';
@@ -52,8 +50,16 @@ export interface CreateOrderRequest_Line {
   quantity: number;
 }
 
+export type CreateOrderError =
+  | 'CustomerRequired'
+  | 'CustomerNotFound'
+  | 'NoLinesWithQuantity'
+  | 'ProductUnavailable';
+
 export interface CreateOrderResponse {
-  order: CreateOrderResponse_Order;
+  successful: boolean;
+  errors: CreateOrderError[];
+  order: CreateOrderResponse_Order | null;
 }
 
 export interface CreateOrderResponse_Order {
@@ -89,14 +95,13 @@ export class CreateOrderUseCase
 
   public async execute(request: CreateOrderRequest): Promise<CreateOrderResponse> {
     const customerId = request.customerId?.trim();
-    if (!customerId) throw new ValidationError('A customer is required.');
+    if (!customerId) return failed(['CustomerRequired']);
 
     const lines = (request.lines ?? []).filter((line) => line.quantity > 0);
-    if (lines.length === 0) {
-      throw new ValidationError('An order needs at least one line with a quantity above zero.');
-    }
+    if (lines.length === 0) return failed(['NoLinesWithQuantity']);
 
     const priced = await this.pricingService.priceLines(lines);
+    if (priced.unavailable.length > 0) return failed(['ProductUnavailable']);
 
     const order: OrderEntity = {
       orderId: randomUUID(),
@@ -113,8 +118,12 @@ export class CreateOrderUseCase
 
     await this.orderRepository.createOrder(order);
 
-    return { order: toContract(order, priced) };
+    return { successful: true, errors: [], order: toContract(order, priced) };
   }
+}
+
+function failed(errors: CreateOrderError[]): CreateOrderResponse {
+  return { successful: false, errors, order: null };
 }
 
 function toContract(order: OrderEntity, priced: PricedLine[]): CreateOrderResponse_Order {
@@ -132,27 +141,30 @@ Trim, parse, range-check, and reject in the use case. Repositories assume valid 
 
 **Order of checks, always:**
 
-1. Shape and value validation → `ValidationError`.
-2. Existence of referenced entities → `NotFoundError`.
-3. Authorization beyond the role gate (ownership, tenancy) → `ForbiddenError`.
-4. Business rules and state machine → `ValidationError` or `ConflictError`.
+1. Shape and value validation → its own error value (`CustomerRequired`).
+2. Existence of referenced entities → its own error value (`CustomerNotFound`).
+3. Ownership and tenancy, beyond the role gate → its own error value (`NotYourOrder`).
+4. Business rules and the state machine → its own error value (`OrderAlreadyShipped`).
 5. Mutate.
-6. Map and return.
+6. Map and return a successful response.
 
 Return as early as possible on failure. Do not wrap the happy path in a conditional with
 a balancing else — validate, return, and let the happy path run at the top level of the
 method.
 
-The example above throws typed errors because that is the shape this reference picked. In
-a project that chose the result-object shape
-([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1), each step above
-returns a failed response carrying its own error value instead. The order and the
-early-return discipline are the same.
+**Every one of those is a declared value in the response's error enumeration, and none of
+them carries a message.** The backend does not know the reader's language
+([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1.1). Where the client
+needs data to build its message — the conflicting name, the allowed range — that goes in a
+named field on the response, not in interpolated prose.
 
-**Every failure in that list is a declared outcome.** An unexpected exception — a store
-that is unreachable, a bug — is left to propagate and becomes a 500 at the entrypoint.
-Do not catch it here to convert it into a declared failure; that hides a defect on the
-normal path.
+**An unexpected exception is left to propagate** and becomes a 500 at the entrypoint. Do
+not catch it here to convert it into a declared failure; that hides a defect on the normal
+path.
+
+The validation this rule is about is **business validation**. A request that is not even
+the declared shape — a missing required field, a string where a number belongs — is
+rejected by the transport before the use case runs, and needs no error value.
 
 ### 3.2 No I/O except through ports
 
@@ -225,6 +237,11 @@ These are enforced by the extractor and fail the build. Full detail in
 5. No domain entity type appears anywhere in the tree.
 6. Primitive unions are written out (`'draft' | 'placed' | 'cancelled'`), not aliased to
    a domain type.
+7. **Every response declares its own error enumeration**, named `XxxError`, owned by that
+   endpoint and shared with nothing. A shared error enumeration couples two endpoints'
+   failure modes exactly as a shared response type couples their data.
+8. **No field in any contract carries user-facing prose.** The extractor cannot check this
+   mechanically, so it is a review question on every new contract.
 
 ### 4.1 Why rule 4 is not negotiable
 
