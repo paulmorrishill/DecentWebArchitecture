@@ -113,10 +113,10 @@ root, and no reflection-driven injection.
   a use case needs more than one reading.** A `Clock` port, constructor-injected, with a
   fake in tests. Two readings across a long operation, a timeout comparison, a scheduled
   window — all legitimate.
-- **A single "now" for the whole request is the common case**, and putting it on the
-  request context as an ISO-8601 string is the cheapest way to get it: the entrypoint
-  reads the clock once and every use case in that request agrees on the value. Use this
-  where one timestamp is what the work needs; use the port where it is not.
+- **A single "now" for the whole request is the common case.** The entrypoint reads the
+  real clock once and injects a fixed clock holding that instant, so every use case in the
+  request agrees. The use case still just asks a `Clock` — the guarantee lives in the
+  implementation, not in a convention the use case has to know about.
 - Identifier generation uses a standard UUID/ULID function, called in the use case, not
   in the repository and not in the database. Where a test needs deterministic identifiers,
   inject the generator instead.

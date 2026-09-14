@@ -100,7 +100,15 @@ Two consequences to document in any feature that uses the channel:
 - The connection's tenant is fixed at handshake from the token's claim. A privileged user
   browsing another tenant over HTTP will **not** receive that tenant's pushes.
 - Every publish site must have a concrete tenant in scope: use cases take it from the
-  request context, workers resolve it from the row. A cross-tenant broadcast is a bug.
+  `TenantContext` port, workers resolve it from the row. A cross-tenant broadcast is a bug.
+
+**Echo suppression uses the client instance identifier, not the user identifier.** A
+broadcast caused by one client should not be re-applied by that client, which already has
+the change — but the same user may have two tabs or two devices open, and both of the
+others do need it. Stamp the originating instance identifier
+([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3.2) on the envelope
+and let each client ignore its own. Suppressing by user identifier drops the update on the
+user's other windows.
 
 ---
 

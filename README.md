@@ -70,7 +70,9 @@ Read in this order, and do the work in this order:
 4. [03-backend-domain-and-ports](docs/03-backend-domain-and-ports.md) → [04-use-cases](docs/04-use-cases.md) → [05-repositories-and-persistence](docs/05-repositories-and-persistence.md)
    — build one vertical slice end to end.
 5. [06-api-contract-and-codegen](docs/06-api-contract-and-codegen.md) — stand the generator up as soon as the second
-   endpoint exists, not later.
+   endpoint exists, not later. Fill in the wire-format table of
+   [25-typed-values-and-serialization](docs/25-typed-values-and-serialization.md) at the
+   same time, before a date field exists to argue about.
 6. [14-local-dev-and-simulators](docs/14-local-dev-and-simulators.md) — make the whole stack runnable offline before adding
    the third feature.
 7. [09-frontend](docs/09-frontend.md), then [10-mobile](docs/10-mobile.md).
@@ -106,7 +108,7 @@ The rest stay as the specification they are.
 |---|---|
 | [01-principles.md](docs/01-principles.md) | Dependency rule, black-box contracts, sizing, what "done" means |
 | [02-repository-layout.md](docs/02-repository-layout.md) | Monorepo shape, package boundaries, naming, generated files |
-| [03-backend-domain-and-ports.md](docs/03-backend-domain-and-ports.md) | Entities, ports, typed errors, request context, clock |
+| [03-backend-domain-and-ports.md](docs/03-backend-domain-and-ports.md) | Entities, ports, declared failures, ambient-state ports, clock, client instance |
 | [04-use-cases.md](docs/04-use-cases.md) | The use case pattern, contracts, validation, roles, recipe |
 | [05-repositories-and-persistence.md](docs/05-repositories-and-persistence.md) | Repository pattern, mappers, key shape, schema changes |
 | [06-api-contract-and-codegen.md](docs/06-api-contract-and-codegen.md) | Decorator metadata, extraction, generation, contract rules, compatibility |
@@ -128,6 +130,7 @@ The rest stay as the specification they are.
 | [22-pitfalls-checklist.md](docs/22-pitfalls-checklist.md) | The pre-completion checklist of recurring defect shapes |
 | [23-new-feature-recipe.md](docs/23-new-feature-recipe.md) | End-to-end recipe from spec to merged |
 | [24-glossary.md](docs/24-glossary.md) | Terms used across the set |
+| [25-typed-values-and-serialization.md](docs/25-typed-values-and-serialization.md) | Date and time types, money, the wire format, converters, client rehydration |
 
 ---
 

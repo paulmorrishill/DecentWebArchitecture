@@ -158,9 +158,17 @@ Hand-written, one file, owns:
 
 - reading the credential and attaching it to the outbound request,
 - attaching the tenancy header where the caller may act across tenants,
+- attaching the **client version** and the **client instance identifier**, both on every
+  call (see [03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3.2),
 - a request timeout — every call has one,
+- rehydrating the response into the client's value types before anything else sees it
+  (see [25-typed-values-and-serialization](25-typed-values-and-serialization.md) § 6),
 - mapping a non-2xx response to the typed error the client code branches on,
 - the unauthenticated response: clear the credential, route to sign-in.
+
+The instance identifier is generated **once, here, at client start** — a random value held
+in memory. It is not persisted, so a reload or a relaunch produces a new one, which is the
+intended behaviour. No screen, hook, or store ever passes it explicitly.
 
 Never put a token in a query string. Headers only.
 
@@ -260,8 +268,8 @@ A generator can exit zero and emit less than it was asked to.
 There is no API version number. The contract's compatibility rules do the work
 ([04-use-cases](04-use-cases.md) § 7). Two additional mechanisms:
 
-**Client version on the context.** The client sends its version; the entrypoint puts it
-on the request context. A use case may branch on it to keep an old client working, and a
+**Client version.** The client sends its version; the entrypoint exposes it through the
+`ClientInfo` port. A use case may branch on it to keep an old client working, and a
 guard can refuse a client below a minimum supported version with an actionable message
 rather than a confusing failure.
 

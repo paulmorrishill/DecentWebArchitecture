@@ -11,11 +11,16 @@ unit of the test.
 ```ts
 export interface UseCaseDefinition<TRequest, TResponse> {
   getRequiredRoles(): readonly Role[];
-  execute(request: TRequest, context: RequestContext): Promise<TResponse>;
+  execute(request: TRequest): Promise<TResponse>;
 }
 ```
 
 That is the whole contract. One method for authorization, one for the work.
+
+**`execute` takes one argument.** There is no request-context parameter. Who is calling,
+when, and on whose behalf all arrive through constructor-injected ports
+([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3), so a use case's
+constructor states exactly which ambient state it reads.
 
 Reference implementation B's equivalent is a per-use-case interface with a single
 `Execute(Request) → Response` method and a response object carrying `successful` plus a
@@ -29,10 +34,10 @@ list of typed error values. Same shape, different error convention ([01-principl
 import { randomUUID } from 'node:crypto';
 import { ValidationError, NotFoundError } from '../../common/errors';
 import { roles, type Role } from '../../common/roles';
-import type { RequestContext } from '../../common/request-context';
 import type { OrderEntity } from '../../../domain/entities/order';
 import type { OrderRepository } from '../../ports/order-repository';
 import type { PricingService } from '../../services/pricing-service';
+import type { CallerIdentity, Clock } from '../../ports/request-scope';
 import type { UseCaseDefinition } from '../use-case-definition';
 import { ApiEndpoint } from '../api-endpoint';
 
@@ -74,16 +79,15 @@ export class CreateOrderUseCase
   public constructor(
     private readonly orderRepository: OrderRepository,
     private readonly pricingService: PricingService,
+    private readonly caller: CallerIdentity,
+    private readonly clock: Clock,
   ) {}
 
   public getRequiredRoles(): readonly Role[] {
     return [roles.editor];
   }
 
-  public async execute(
-    request: CreateOrderRequest,
-    context: RequestContext,
-  ): Promise<CreateOrderResponse> {
+  public async execute(request: CreateOrderRequest): Promise<CreateOrderResponse> {
     const customerId = request.customerId?.trim();
     if (!customerId) throw new ValidationError('A customer is required.');
 
@@ -103,8 +107,8 @@ export class CreateOrderUseCase
         productId: line.productId,
         quantity: line.quantity,
       })),
-      createdBy: context.userId,
-      createdAt: context.nowIso,
+      createdBy: this.caller.userId(),
+      createdAt: this.clock.now(),
     };
 
     await this.orderRepository.createOrder(order);
@@ -154,11 +158,12 @@ normal path.
 
 - No vendor SDK client imported into a use case, ever.
 - No direct network call.
-- No **ambient** clock read. Use `context.nowIso` for the request's single "now", or an
-  injected `Clock` port where the use case genuinely needs to read time more than once.
-  A global date function is the thing that is banned, not time itself.
+- No **ambient** clock read. Time comes from the injected `Clock`. A global date function
+  is the thing that is banned, not time itself.
 - No file-system access.
+- No cookie, header, or transport detail of any kind. Those belong to the entrypoint.
 - Identifier generation via the standard UUID/ULID function is allowed and expected.
+  Inject a generator instead where a test needs determinism.
 
 ### 3.3 Map domain to contract before returning
 
@@ -182,7 +187,10 @@ One use case is one intent. Symptoms that you have two:
 - a mode or type discriminator in the request,
 - a boolean parameter that switches behaviour,
 - a response whose fields are populated in two mutually exclusive groups,
-- a name containing "And" or "Or".
+- a name containing "And" or "Or",
+- a constructor taking more than about three of the ambient-state ports. A use case that
+  needs the caller, their roles, the tenant, the clock and the client version is usually
+  doing an authorization decision that belongs in the dispatcher plus a piece of work.
 
 Composition happens through services and ports, not by bundling. "Create the order,
 email the customer, write the audit entry" is one use case calling three collaborators,

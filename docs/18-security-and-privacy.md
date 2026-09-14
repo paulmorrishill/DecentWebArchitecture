@@ -6,7 +6,7 @@
 
 - An external identity provider issues tokens. The application never stores a password.
 - The gateway or the entrypoint **verifies** the token before any application code runs.
-  Claims reaching the request context are verified claims.
+  Claims reaching the `CallerIdentity` and `CallerRoles` ports are verified claims.
 - The client parses the token only for display and routing decisions. **Never trust a
   client-side claim for an authorization decision.** Every authoritative check is
   server-side.

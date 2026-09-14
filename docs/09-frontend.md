@@ -12,7 +12,8 @@ web/src/
   api/
     client.generated      generated client — never hand-edited
     types.generated       generated contract types — never hand-edited
-    core/                 transport: credential, headers, errors, timeout
+    core/                 transport: credential, headers, client instance id,
+                          rehydration, errors, timeout
     <feature>Api.ts       hand-written wrappers for binary/multipart only
   pages/                  route-level components, one per route
   components/             shared components, and per-feature subfolders

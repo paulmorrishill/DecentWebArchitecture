@@ -50,7 +50,7 @@ api/
     domain/
       entities/            Plain data types. No behaviour, no I/O.
     application/
-      common/              errors, roles, request-context, error reporting
+      common/              errors, roles, error reporting
       ports/               interfaces the application needs from outside
       services/            pure or port-using helpers shared by use cases
       events/              typed event publishers over a generic broadcaster port
@@ -63,7 +63,7 @@ api/
     entry/
       index.ts             composition root + dispatcher
       routes.<gen>         GENERATED dispatcher table
-      auth-context.ts      builds the request context from the transport event
+      request-scope.ts     builds the ambient-state port implementations
       responses.ts         transport response helpers
       workers/             non-request entrypoints (queue consumers, scheduled jobs)
     local/                 local development host + simulators
@@ -95,10 +95,11 @@ Use cases are grouped into **namespaces** — one per bounded area of the API (`
 export function createOrderUseCases(
   orderRepository: OrderRepository,
   pricingService: PricingService,
+  scope: RequestScope,          // the ambient-state ports, built per request
 ) {
   return {
-    create: new CreateOrderUseCase(orderRepository, pricingService),
-    cancel: new CancelOrderUseCase(orderRepository),
+    create: new CreateOrderUseCase(orderRepository, pricingService, scope.caller, scope.clock),
+    cancel: new CancelOrderUseCase(orderRepository, scope.caller, scope.clock),
     get:    new GetOrderUseCase(orderRepository),
   };
 }
@@ -108,6 +109,11 @@ export type OrderUseCases = ReturnType<typeof createOrderUseCases>;
 
 A factory function rather than a class, because it is trivially callable from both the
 entrypoint (real implementations) and a test (fakes), with no container.
+
+Note that `GetOrderUseCase` takes no ambient-state ports at all. **The factory is where
+you can see, at a glance, which use cases read the caller, the clock, or the tenant.**
+`RequestScope` is a bundle the factory destructures — it is never passed into a use case
+whole. See [03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3.
 
 ---
 

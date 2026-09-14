@@ -52,8 +52,10 @@ constrained, write the ADR **in this pull request**. ([20-decision-records](20-d
 3. **Contracts.** Write `XxxRequest` and `XxxResponse` in the use-case file, with named
    nested types. Nothing reused from another endpoint. ([04-use-cases](04-use-cases.md) § 4)
 4. **Use case.** Decorator with namespace, method, roles, and the privacy flag. Class,
-   `getRequiredRoles()`, `execute()`. Validate, check existence, check ownership, apply
-   business rules, mutate, map, return. ([04-use-cases](04-use-cases.md) § 3)
+   `getRequiredRoles()`, `execute(request)` — one argument. Declare each ambient-state
+   port it reads in the constructor: the caller, the clock, the tenant. Validate, check
+   existence, check ownership, apply business rules, mutate, map, return.
+   ([04-use-cases](04-use-cases.md) § 3)
 5. **Unit test** beside the use case, with inline fakes. Happy path, every validation
    failure, not-found, permission denial, downstream failure. Make each new assertion
    fail before trusting it. ([11-testing-unit](11-testing-unit.md))

@@ -43,6 +43,18 @@ complete, and before merging.
 - [ ] The privacy classification on every new or changed endpoint is present and correct.
 - [ ] Permission tests exist both ways: usable for a permitted role, refused for an
       unpermitted one.
+- [ ] No authorization decision reads the client instance identifier, a request field, or
+      any other client-supplied value. Identity and roles come from the verified token
+      only.
+
+## 4b. Ambient state
+
+- [ ] `execute` takes one argument. No context object reappeared, under any name.
+- [ ] Each new use case declares the ambient-state ports it reads, individually, in its
+      constructor. No bundle, resolver, locator, or factory is injected in their place.
+- [ ] No use case reads a cookie, a header, or any other transport detail.
+- [ ] No ambient clock call anywhere in the application layer.
+- [ ] A use case taking more than about three ambient-state ports was looked at again.
 
 ## 5. Infrastructure
 

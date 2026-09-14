@@ -8,18 +8,13 @@ proven.
 
 ## 1. The pattern
 
-Construct the use case with fake ports, drive it with a request context, assert on both
-the returned value and the side effects the fake captured.
+Construct the use case with fake ports — including the ambient-state ports it declares —
+call `execute` with the request, and assert on both the returned value and the side
+effects the fake captured.
 
 ```ts
-const baseContext: RequestContext = {
-  requestId: 'req-1',
-  userId: 'user-1',
-  userEmail: 'user@example.com',
-  userRoles: ['Editor'],
-  tenantId: 'tenant-a',
-  nowIso: '2026-01-01T00:00:00.000Z',
-};
+const caller = fixedCaller('user-1');
+const clock  = fixedClock('2026-01-01T00:00:00.000Z');
 
 describe('CreateOrderUseCase', () => {
   it('creates a draft order with the priced lines', async () => {
@@ -32,27 +27,36 @@ describe('CreateOrderUseCase', () => {
       async cancelOrder() { return null; },
     };
 
-    const useCase = new CreateOrderUseCase(orderRepository, stubPricing());
+    const useCase = new CreateOrderUseCase(orderRepository, stubPricing(), caller, clock);
 
-    const response = await useCase.execute(
-      { customerId: 'cust-1', lines: [{ productId: 'p1', quantity: 2 }] },
-      baseContext,
-    );
+    const response = await useCase.execute({
+      customerId: 'cust-1',
+      lines: [{ productId: 'p1', quantity: 2 }],
+    });
 
     expect(created).not.toBeNull();
     expect(created!.status).toBe('draft');
+    expect(created!.createdBy).toBe('user-1');
     expect(created!.createdAt).toBe('2026-01-01T00:00:00.000Z');
     expect(response.order.lines[0]!.quantity).toBe(2);
   });
 
   it('rejects an order with no lines above zero quantity', async () => {
-    const useCase = new CreateOrderUseCase(emptyRepository(), stubPricing());
+    const useCase = new CreateOrderUseCase(emptyRepository(), stubPricing(), caller, clock);
     await expect(
-      useCase.execute({ customerId: 'cust-1', lines: [{ productId: 'p1', quantity: 0 }] }, baseContext),
+      useCase.execute({ customerId: 'cust-1', lines: [{ productId: 'p1', quantity: 0 }] }),
     ).rejects.toThrow('An order needs at least one line');
   });
 });
 ```
+
+**The test constructs only the ambient-state ports the use case declares.** That is the
+benefit of having no context object: a use case that secretly consults the caller's roles
+cannot compile without asking for `CallerRoles`, so the test — and the reader — can see it
+from the constructor. A single shared context object hides exactly that.
+
+Keep one-line factories (`fixedCaller`, `fixedClock`, `tenant`) in the test support module.
+They are two lines each and every use-case test uses them.
 
 ---
 
@@ -63,7 +67,7 @@ describe('CreateOrderUseCase', () => {
 2. **Extract a fake class** into `tests/fakes/in-memory-*.ts` only when the same fake is
    reused across several test files, **or** when it needs state across calls and is used
    more than once. Reusable fakes drift; inline fakes show intent.
-3. **One frozen base context** per file, spread-overridden per test.
+3. **Ambient-state fakes come from one-line factories** in the test support module — `fixedCaller`, `fixedClock`, `tenant`. Override per test by constructing a different one, never by mutating a shared object.
 4. **Capture side effects in a closure** and assert on the captured value, rather than
    spying on the call. The captured value proves what was written; a spy proves only that
    something was called.
@@ -80,10 +84,13 @@ describe('CreateOrderUseCase', () => {
 9. **No arrange/act/assert comments.** Blank lines separate the phases. The test name and
    the body are the documentation.
 10. **No shared mutable state between tests.** Everything is constructed per test.
-11. **No network, no database, no file system, and no ambient clock.** Time comes from
-    the frozen `nowIso` on the context, or from a fake `Clock` the test controls. If the
-    unit under test reaches for any of these directly, either it has the wrong
-    dependencies or the test belongs in the integration suite.
+11. **No network, no database, no file system, and no ambient clock.** Time comes from a
+    fake `Clock` the test controls. If the unit under test reaches for any of these
+    directly, either it has the wrong dependencies or the test belongs in the integration
+    suite.
+12. **Never construct a use case with a shared mutable ambient-state object.** Each test
+    builds the fakes it needs. A shared one reintroduces the context object through the
+    test tree.
 
 ### 2.1 Builders
 

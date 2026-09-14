@@ -12,8 +12,8 @@ One file per deployable. It is the only place that:
 - reads environment variables (through the typed `config` module),
 - constructs vendor SDK clients,
 - constructs concrete infrastructure classes,
+- builds the per-request scope,
 - builds the use-case bundles,
-- builds the per-request context,
 - dispatches.
 
 ```
@@ -22,12 +22,12 @@ One file per deployable. It is the only place that:
 3. Construct repositories from clients + table names
 4. Construct services and event publishers
 5. Per request:
-   a. build the request context from verified claims
-   b. build the use-case bundles for this request
+   a. build the request scope from verified claims — the ambient-state ports
+   b. build the use-case bundles for this request, passing those ports in
    c. resolve the route from the generated table
    d. check roles
    e. execute
-   f. map the result or the typed error to a response
+   f. map the declared failure or the result to a response
 ```
 
 Rules:
@@ -36,7 +36,13 @@ Rules:
   what destroys this architecture over time. If logic appears here, push it down.
 - **Construct the expensive, stateless things once**, outside the request handler:
   clients, repositories, services. Construct the per-request things per request: the
-  context, and any tenant-scoped provider derived from it.
+  ambient-state ports, the tenant-scoped repositories derived from them, and the use-case
+  bundles that take them.
+- **Use cases are constructed per request.** They are plain objects holding references, so
+  this is cheap — and it is what lets each one take exactly the ambient-state ports it
+  needs as ordinary constructor parameters. The alternative, a request-scoped proxy
+  resolved at call time, is rejected: it puts ambient state back behind an indirection and
+  removes the thing the constructor was telling you.
 - **Fail at startup on missing configuration.** A configuration value read lazily at
   first use turns a deployment mistake into an intermittent runtime error weeks later.
 - **Log which implementation was selected** wherever configuration chooses between a
@@ -44,24 +50,34 @@ Rules:
 
 ---
 
-## 2. Building the request context
+## 2. Building the request scope
+
+The entrypoint constructs one implementation of each ambient-state port
+([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3) and hands them to
+the use-case factories. There is no context object, and nothing here is passed to
+`execute`.
 
 ```ts
-export function buildRequestContext(event: TransportEvent): RequestContext {
-  const claims = event.verifiedClaims;         // from the gateway's authorizer
+export function buildRequestScope(event: TransportEvent, clock: Clock): RequestScope {
+  const claims = event.verifiedClaims;               // from the gateway's authorizer
   return {
-    requestId: event.requestId,
-    userId: claims.sub ?? '',
-    userEmail: claims.email ?? null,
-    userRoles: parseRoles(claims),
-    tenantId: resolveTenant(event, claims),
-    nowIso: clock.nowIso(),                    // the request's single "now"
-    clientVersion: event.headers['x-client-version'],
-    cookies: parseCookies(event),
-    setCookies: [],
+    caller:   new ClaimsCallerIdentity(claims),
+    roles:    new ClaimsCallerRoles(claims),
+    tenant:   new ResolvedTenantContext(resolveTenant(event, claims)),
+    clock:    new FixedClock(clock.now()),           // one instant for this request
+    client:   new HeaderClientInfo(event.headers),
+    instance: new HeaderClientInstance(event.headers),
   };
 }
+
+// then, per namespace
+const orders = createOrderUseCases(orderRepository, pricingService, scope);
 ```
+
+`RequestScope` is a **construction-time bundle held by the entrypoint**, not a parameter
+and not a type the application layer imports. It exists so the factory call has one
+argument instead of six. A use case still declares the individual ports it takes; nothing
+is allowed to accept the bundle itself.
 
 Rules:
 
@@ -69,9 +85,14 @@ Rules:
   unverified header.
 - A header that lets a privileged caller act in another tenant is honoured **only after**
   the role check that permits it. See [08-multi-tenancy](08-multi-tenancy.md).
-- `nowIso` is read here, once per request. The entrypoint holds the one `Clock`
-  implementation; a use case that needs to read time again takes that same `Clock` as a
-  constructor parameter rather than calling an ambient date function.
+- **The clock is frozen for the request.** The entrypoint reads the real clock once and
+  wraps the value, so every use case in the request agrees. A use case that genuinely
+  needs time to advance — a long-running worker loop — takes the real clock instead, and
+  says so.
+- **Cookies are read and written here, or not at all.** They never reach a use case. See
+  [03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.3.1.
+- **The correlation identifier goes to the error reporter and the logger**, constructed
+  here, not to any use case.
 
 ---
 
@@ -81,12 +102,15 @@ Rules:
 const action = routes.find((r) => r.namespace === ns && r.method === m);
 if (!action) return notFound();
 
-if (!isPublic(action) && !context.userId) return unauthorized();
-if (!hasAnyRequiredRole(context.userRoles, action.requiredRoles)) return forbidden();
+if (!isPublic(action) && !scope.caller.userId()) return unauthorized();
+if (!hasAnyRequiredRole(scope.roles.roles(), action.requiredRoles)) return forbidden();
 
-const result = await action.execute(payload, context);
+const result = await action.execute(payload);
 return ok(result);
 ```
+
+The dispatcher reads identity and roles from the same ports the use cases use. It does
+**not** hand them onward — the use case already holds the ones it declared.
 
 - **Public endpoints are explicit.** The route entry declares the anonymous role; the
   dispatcher computes "is public" from that. An endpoint with an empty role list is a
@@ -120,10 +144,14 @@ composition, reusing the same repositories and use cases.
 
 Rules for every worker:
 
-1. **A worker has no request context.** It builds one from the row or message it is
-   processing: read the entity, read its tenant, construct a constant tenant provider,
-   then construct the tenant-scoped repositories. Hardcoding a default tenant silently
-   mixes data.
+1. **A worker builds the same ambient-state ports from different sources**, and then uses
+   the same use cases. Read the entity, read its tenant, and construct
+   `ConstantTenantContext`, a `SystemCaller` naming the worker, and a real `Clock`.
+   Hardcoding a default tenant silently mixes data.
+
+   This is the payoff for having no context object: a worker is no longer a special case
+   that "has no context and must fake one". It supplies different implementations of the
+   same narrow interfaces, and every use case works unchanged.
 2. **Idempotency is designed, not hoped for.** Use a deterministic key derived from the
    entity and the state transition, and a dedupe record where at-least-once delivery
    would break an invariant.

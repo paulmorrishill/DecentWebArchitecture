@@ -34,7 +34,9 @@
 | **Pre-production** | The deployed environment fed by the integration branch. Real cloud, disposable data. |
 | **Privacy classification** | The required per-endpoint declaration of whether a response can carry personal data. Extracted into a runtime gate. |
 | **Repository** | The infrastructure implementation of a persistence port. |
-| **Request context** | The per-request data every use case receives: identity, roles, tenant, "now". |
+| **Request scope** | The per-request implementations of the ambient-state ports, built by the entrypoint and destructured into the use cases that declare them. Never passed to a use case whole. |
+| **Ambient-state port** | A narrow interface carrying one piece of request-scoped state: who is calling, their roles, the tenant, the time, the client version, the client instance. |
+| **Client instance identifier** | An ephemeral random value a client generates at start and sends on every call. Untrusted, never identity, dies with the instance. |
 | **Route table** | The generated dispatcher table mapping namespace and method to a use case and its required roles. Security-relevant. |
 | **Scoped repository** | A repository whose base class enforces tenant isolation on every read and write. |
 | **Silent no-op** | Work that never ran, with no error, because it was detached, unwired, or replaced by a no-op. |
