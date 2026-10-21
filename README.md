@@ -117,6 +117,7 @@ written for a harness to read:
 | `skills/adversarial-bug-hunt/` | [22-pitfalls-checklist](docs/22-pitfalls-checklist.md) |
 | `skills/e2e-coverage-validation/` | [13-testing-e2e](docs/13-testing-e2e.md) |
 | `skills/design-insufficiency/` | [23-new-feature-recipe](docs/23-new-feature-recipe.md) § 0.2 |
+| `skills/prompt-for-sensitive/` | [18-security-and-privacy](docs/18-security-and-privacy.md) § 6.1 |
 
 Start a new project from those fragments rather than retyping the rules; this set is the
 architecture they are applied to.

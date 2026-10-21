@@ -123,6 +123,24 @@ disk at a path the agent names. Then:
 - Stop if the account does not match the intended target.
 - Delete the file when the work is done.
 
+For a job with many steps, do not keep the value in a plaintext file between steps.
+Write it to an encrypted vault, and give the agent only a token:
+
+- The key is split. One half is the token the agent holds. The other half is protected
+  by the operating system for the local user (DPAPI on Windows) and is kept apart from
+  the vault file. A leaked transcript alone, or a leaked vault file alone, gives nothing.
+- The vault has an expiry inside its authenticated header. An expired vault is refused
+  and its machine half is shredded. A scheduled sweep shreds expired vaults that no step
+  touched again.
+- A step uses the value only through a wrapper that starts the child with the value in an
+  env var or on stdin. The value never goes to disk or to the agent's output.
+- The wrapper masks the value, its common encodings and the token in the child's output.
+- No command prints the plaintext.
+
+The `prompt-for-sensitive` skill in
+**[paulmorrishill/ClaudeAnnoyanceReduction](https://github.com/paulmorrishill/ClaudeAnnoyanceReduction)**
+does both the plain-file prompt and the encrypted vault.
+
 ---
 
 ## 7. Operating on production
