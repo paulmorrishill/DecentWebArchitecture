@@ -126,6 +126,8 @@ Rules:
 - Large or binary payloads go through object storage with a time-limited URL, never
   through the API response body.
 - Compress. Check it is actually happening.
+- A large *request* body from an AI agent's tool call is staged by a script and sent as an
+  id, not written token by token. See [26-staged-tool-payloads](26-staged-tool-payloads.md).
 
 ---
 

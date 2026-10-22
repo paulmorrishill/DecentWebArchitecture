@@ -42,6 +42,7 @@
 | **Scoped repository** | A repository whose base class enforces tenant isolation on every read and write. |
 | **Silent no-op** | Work that never ran, with no error, because it was detached, unwired, or replaced by a no-op. |
 | **Simulator** | A local stand-in for an external service, used by the local host and the end-to-end suite. |
+| **Staged payload** | A tool-call body a script uploads to an anonymous endpoint for a short time. The tool call sends only its id, and the dispatcher swaps the body in for the tool server's callers. |
 | **Structural guard** | See guard test. |
 | **Tautological assertion** | An assertion satisfied by more than one outcome of the code under test. Proves nothing. |
 | **Tenant** | The isolation boundary for data. Most rows carry one; global data is a written-down exception. |

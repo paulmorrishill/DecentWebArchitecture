@@ -153,6 +153,7 @@ architecture they are applied to.
 | [23-new-feature-recipe.md](docs/23-new-feature-recipe.md) | End-to-end recipe from spec to merged |
 | [24-glossary.md](docs/24-glossary.md) | Terms used across the set |
 | [25-typed-values-and-serialization.md](docs/25-typed-values-and-serialization.md) | Date and time types, money, the wire format, converters, client rehydration |
+| [26-staged-tool-payloads.md](docs/26-staged-tool-payloads.md) | Large agent tool-call bodies: anonymous staging, the dispatcher swap, cost ceilings |
 
 ---
 

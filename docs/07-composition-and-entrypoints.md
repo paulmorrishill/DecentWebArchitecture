@@ -117,6 +117,8 @@ The dispatcher reads identity and roles from the same ports the use cases use. I
   bug, not a public endpoint.
 - **The role list comes from the generated route table**, which is why that table is
   security-relevant ([06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 6).
+- **A staged tool payload is swapped in before anything reads the body**, for the tool
+  server's callers only. See [26-staged-tool-payloads](26-staged-tool-payloads.md) § 3.
 - **The privacy gate** runs on the response for endpoints classified as returning
   personal data, before the response leaves.
 - **A declared failure is not an error here.** It is a successful call whose response says
