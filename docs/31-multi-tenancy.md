@@ -22,9 +22,8 @@ flowchart TD
     class T here;
 ```
 
-Reference B (C#, relational) has run store-per-tenant in production for years. Reference A
-(TypeScript, key/value cloud store) has branches and a written plan for the tenant level
-above them.
+Reference B (C#, relational) runs store-per-tenant in production. Reference A
+(TypeScript, key/value cloud store) supplies the store limits in § 3 and § 6.
 
 ---
 
@@ -35,7 +34,7 @@ These are rules, not options. The sections after § 1 are the working detail beh
 ### Naming
 
 **R1. Never put a customer's name in a table, bucket, queue, topic, role, domain, prefix or
-any other resource name.** Renaming a deployed resource is a data migration.
+any other resource name.** A deployed resource's name is permanent in practice.
 
 **R2. Give the platform a neutral name and a neutral domain on day one.** The first
 customer's brand on the platform's own domain is R1 with a longer tail.
@@ -51,8 +50,8 @@ customers will choose the same slug.
 **R5. Never key a table on a bare user identity.** Prefix it. It does not collide until the
 day it does, and then it does so silently.
 
-**R6. Re-decide every key shape at the tenant boundary.** A key that was unique across one
-customer's branches is not unique across customers.
+**R6. Every key is unique across customers, not merely across one customer's branches.**
+Branch uniqueness is not tenant uniqueness.
 
 ### Topology
 
@@ -100,9 +99,9 @@ shapes that look harmless and are not.
 A country list, a unit table, a public reference set. Write the reason on the table. If the
 reason needs more than one sentence, it is not global.
 
-**R20. Split the top-level role before anything trusts it.** Platform operator crosses
-customers and is audited. Tenant administrator crosses that customer's branches and nothing
-else.
+**R20. Never create a single role that crosses customers and does everything.** Two roles:
+platform operator, which crosses customers and is audited, and tenant administrator, which
+crosses that customer's branches and nothing else.
 
 **R21. Never let a use case depend on the cross-tenant override.** One named type can switch
 customers, background work uses it, and a guard test fails on any use case that takes it
@@ -251,7 +250,7 @@ Reference A's one deployment has **137 tables**. So:
 | Idea | What happens |
 |---|---|
 | A table set per customer | 137 × customers. The quota stops the product in the low tens, and every infrastructure apply grows with it |
-| A tenant prefix on every table name | A rename of all 137 tables, and the quota problem is unchanged |
+| A tenant prefix on every table name | 137 names per customer in one namespace, and the quota problem is unchanged |
 | **A tenant attribute in the key** | No new tables, ever. This is why pooled is the default on a key/value store |
 | A separate account per customer | Silo (R7). Works, and the fixed cost repeats per customer |
 
@@ -265,7 +264,7 @@ A wire-compatible adapter — a server speaking the same protocol, storing the d
 relational database — gives each customer a database without changing a line of repository
 code: only the endpoint and credentials differ, and the table names stay as they are.
 
-**Gained:** physical isolation with no table rename; a customer can hold its own database,
+**Gained:** physical isolation with one table set; a customer can hold its own database,
 even on its own infrastructure; offboarding is a hand-over; a missing tenant filter cannot
 read another customer.
 
@@ -379,8 +378,7 @@ mechanism does **not** cover.
 
 ### 5.1 The shapes R18 and R19 are about
 
-Every one of these was right across one customer's branches and is wrong across customers.
-Each is found separately, by hand:
+Each of these is a cross-customer leak, and none of them looks like one:
 
 | Shape | What it becomes |
 |---|---|
@@ -405,8 +403,8 @@ its own declared error value
 | Platform operator | Customers | The vendor's own staff. Few, audited, every cross-customer action recorded |
 | Tenant administrator | That customer's branches | The customer's own top role. Nothing else |
 
-Every endpoint that trusted the old single all-powerful role has to be re-read. That is why
-R20 says "before anything trusts it".
+No endpoint trusts a role that crosses customers. The platform operator's reads are audited;
+the tenant administrator's are bounded by the tenant.
 
 ---
 
@@ -453,14 +451,13 @@ boundary is a pool, a client or a claim — never your own code on the authentic
 
 ## 7. Brand configuration (R23, R24)
 
-White-labelling fails in one way: the brand is not in one place, so "change the name" is a
-search, and the search is never complete. Reference A measured its own: **1,710 matching
-lines in 594 files** for one brand word, mixed with unrelated uses of the same word.
+The brand lives in one object, and the guard test stops the first literal that tries to live
+anywhere else. Without that rule the brand spreads and no search finds all of it: Reference A,
+built without it, carries **1,710 matching lines in 594 files** for one brand word, mixed
+with unrelated uses of the same word.
 
-- **A schema-validated file per customer, in version control**, reviewed like code. Start with
-  exactly one, holding today's values, so the first change alters no output.
-- **A byte-identical test for that first change.** Every email and public page rendered before
-  and after, identical. That is what makes a 594-file change safe.
+- **A schema-validated file per customer, in version control**, reviewed like code. One file
+  exists from the first customer, and every brand value in the product is read from it.
 - **A guard test for R23:** no brand word, domain or sender name as a literal outside the
   configuration files, tests and fixtures. In the gate
   ([12-testing-integration-and-guards](12-testing-integration-and-guards.md)).
@@ -512,7 +509,6 @@ index and registry row (R30).
 - **The brand-literal guard** (R23), in the gate.
 - **Configuration schema tests:** a missing key, an over-long sender identifier, an invalid
   colour — each a start failure naming the key (R24).
-- **Byte-identical rendering** of every email and public page across the configuration change.
 - **A second configuration in the test suite** — a fictional customer — and a test that its
   rendered output contains no trace of the first customer's brand.
 - **End to end:** a customer's administrator cannot reach another customer's data through any
@@ -522,12 +518,12 @@ index and registry row (R30).
 
 ---
 
-## 10. Do these before the first customer
+## 10. Build order
 
-R1 to R6, R12, R15, R16, R20, R23 and R24 cost nothing while there is one customer, and each
-is a migration once there are two:
+R1 to R6, R12, R15, R16, R20, R23 and R24 are in place before the first customer signs in.
+They cost nothing to build this way, and the rest of the rules rest on them:
 
-1. The brand configuration object, with one customer in it and a byte-identical test (R23).
+1. The brand configuration object, with one customer in it (R23).
 2. The brand-literal guard in the gate (R23).
 3. A neutral platform name and domain (R2).
 4. No resource named after the first customer (R1).
@@ -537,4 +533,5 @@ is a migration once there are two:
 7. The top-level role split (R20).
 8. One non-code barrier under the data access (R12) — one policy, and it works with one
    customer.
-9. Then take R7: silo, until it hurts.
+9. Then R7: silo, until the per-customer fixed cost or the per-customer release expectation
+   hurts.

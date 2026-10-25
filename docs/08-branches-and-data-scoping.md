@@ -4,8 +4,8 @@
 wrongly more often than it is used rightly, and the wrong reading of it produces a design
 that cannot be sold to a second customer.**
 
-Retrofitting scoping is the most expensive refactor in this architecture, and the defects
-it produces are data leaks. Read this before the first table exists.
+Scope the first table, and every table after it. The defects this prevents are data
+leaks.
 
 ---
 
@@ -57,9 +57,9 @@ user identifier — the same user's other windows need the update (§ 6.1).
 **B14. Load every per-branch static asset through one path helper.** A literal path in a
 component is a cross-branch leak no repository guard can catch (§ 6.2).
 
-**B15. Global data is a written decision with a one-sentence reason**, and every one of
-those decisions is re-read before a second customer exists
-([31-multi-tenancy](31-multi-tenancy.md) § 5.1).
+**B15. Global data is a written decision with a one-sentence reason.** In a product with
+more than one customer, the same question is answered again at the tenant level, where
+the answer is usually no ([31-multi-tenancy](31-multi-tenancy.md) § 5.1).
 
 **B16. Every scoped repository has a cross-branch isolation fixture, and a sentinel fails
 the build when one is missing** (§ 8).
@@ -159,9 +159,9 @@ Two more consequences worth writing down before you meet them:
 - Most domain rows carry a `branchId` attribute and are readable only within their branch.
 - Some data is deliberately **global** — shared reference data, a public namespace, a
   cross-branch administrative record. Global is a decision that is written down, not a
-  default. **Re-read every one of those decisions before selling to a second customer**
-  ([31-multi-tenancy](31-multi-tenancy.md) § 5): "shared across branches" silently becomes
-  "shared across customers".
+  default. In a product with more than one customer the same question is answered again at
+  the tenant level, where "shared" means shared across customers and the answer is usually
+  no ([31-multi-tenancy](31-multi-tenancy.md) § 5.1).
 - **A user belongs to exactly one branch.** Where somebody must work across branches, that
   is a membership grant checked at the request boundary (§ 5.3), not a second home branch.
   Keep it that way: the day a user's branch becomes movable, every table keyed on a bare
@@ -347,18 +347,9 @@ resolver has no branch context. Where that is right:
    so the client can tell the user a different name would work. Never let an ownership
    violation reach the client.
 
-**And mark it.** Every global namespace is an item on the migration list the day a second
-customer appears ([31-multi-tenancy](31-multi-tenancy.md) § 5). A global slug namespace
-that is fine across one customer's branches is a cross-customer collision, and in the worst
-cases a cross-customer read.
-
-### 7.2 Changing a key shape strands existing rows
-
-Read both shapes during the transition — scoped first, bare second, and note that the bare
-fallback must still mask other branches. Ship a re-key script alongside. Delete the fallback
-once the script reports zero remaining rows **in every environment**.
-
----
+**And mark it.** A global slug namespace that is fine across one customer's branches is a
+cross-customer collision in a product with more than one customer, and in the worst cases a
+cross-customer read ([31-multi-tenancy](31-multi-tenancy.md) § 5.1).
 
 ## 8. Tests that enforce isolation
 
@@ -385,9 +376,9 @@ in as branch B, assert absence in the list, the search, and any client sync payl
 
 **All four of these test code, and code is where the holes move.** Every barrier in this
 file — the request scope, the base class, the key prefix — is a line somebody can change.
-That is acceptable for branches inside one customer, where the top administrator may see
-all of it anyway. It stops being acceptable the moment the boundary is between **customers**:
-then you want at least one barrier the application cannot edit its way past.
+That is enough for branches inside one customer, where the top administrator may see all of
+it anyway. It is not enough when the boundary is between **customers**: there you need at
+least one barrier the application cannot edit its way past.
 [31-multi-tenancy](31-multi-tenancy.md) § 2.1 to § 2.3 is that argument, with the diagrams.
 
 If a feature is intentionally global, say so in the design and skip test 4 — but say it, in
