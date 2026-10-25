@@ -9,6 +9,63 @@ it produces are data leaks. Read this before the first table exists.
 
 ---
 
+## The rules
+
+These are rules, not options. The numbered sections are the working detail behind them.
+
+**B1. One table per entity kind. Never one table per branch.** The table namespace is flat
+and account-wide and the table quota is a hard ceiling (§ 2).
+
+**B2. Put the branch in the key, never in the table name.** A table name per branch
+multiplies every table, every index and every protection setting.
+
+**B3. Pass the branch to the repository as an argument. Never ambient.** An ambient value
+that disappears across an async hop cannot make a missing scope a compile error. Reference A
+shipped the ambient version and it leaked repeatedly (§ 4.1).
+
+**B4. A scoped repository never touches the raw store client.** If an operation cannot be
+expressed with the base class primitives, extend the base class.
+
+**B5. Never pass a row limit to a post-filtered query** unless the key condition alone
+already guarantees at most one row per branch. The limit applies to the wrong set.
+
+**B6. A cross-branch overwrite is a programming error.** Report it as an unexpected failure.
+Never translate it into a declared error value
+([17-observability-and-errors](17-observability-and-errors.md) § 7).
+
+**B7. Resolve the branch from a verified claim.** A privileged override is honoured only
+after the role check that permits it, refuses a branch that does not exist, never falls back
+to the caller's own branch, and is named in every answer that used it (§ 5.3).
+
+**B8. Every anonymous endpoint has a registered resolver.** Where none is registered the
+provider throws. Never register a fake resolver to silence a stray scoped call.
+
+**B9. A worker reads the branch from the row it is processing. Never default one.**
+
+**B10. Use a generated identifier for a key.** Prefix anything user-chosen or externally
+owned with the branch, at the repository boundary (§ 7).
+
+**B11. Never key a scoped table on a bare user identity.** Prefix it anyway.
+
+**B12. A user belongs to exactly one branch.** Working across branches is a membership
+grant checked at the request boundary, not a second home branch.
+
+**B13. Every broadcast carries the branch on the envelope, and a payload without one is
+dropped loudly.** Suppress the sender's own echo by client instance identifier, never by
+user identifier — the same user's other windows need the update (§ 6.1).
+
+**B14. Load every per-branch static asset through one path helper.** A literal path in a
+component is a cross-branch leak no repository guard can catch (§ 6.2).
+
+**B15. Global data is a written decision with a one-sentence reason**, and every one of
+those decisions is re-read before a second customer exists
+([31-multi-tenancy](31-multi-tenancy.md) § 5.1).
+
+**B16. Every scoped repository has a cross-branch isolation fixture, and a sentinel fails
+the build when one is missing** (§ 8).
+
+---
+
 ## 1. A branch is not a tenant
 
 A **branch** is a sub-unit **inside one customer**: a region, a chapter, a depot, a site,
