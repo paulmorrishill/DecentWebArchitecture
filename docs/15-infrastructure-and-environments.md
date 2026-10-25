@@ -151,6 +151,11 @@ attribute.
   bill.
 - Know which resources bill per request and which bill per hour. A design that adds a
   per-item call inside a loop changes the shape of the bill, not just the latency.
+- Know which **fixed** monthly charges the account carries. An edge firewall usually bills
+  per access control list and per rule, not per request, so the bill does not fall when
+  the traffic does. [29-hardening-that-costs-nothing](29-hardening-that-costs-nothing.md)
+  § 1 covers the flat-rate plan that replaces those charges, and § 7 of the same file
+  lists what still costs money.
 
 ---
 
@@ -167,6 +172,9 @@ attribute.
   constraint on how many origins one surface can have. Know the number before designing
   around it.
 - A rewrite rule that changes a path does not change which origin serves it. Check both.
+- The free settings on a distribution — the managed security-headers policy, the minimum
+  TLS version, origin access control with public access blocked — are in
+  [29-hardening-that-costs-nothing](29-hardening-that-costs-nothing.md) § 1.2.
 
 ---
 

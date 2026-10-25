@@ -165,6 +165,12 @@ does both the plain-file prompt and the encrypted vault.
 - Keep a scheduled job that reports known vulnerabilities, and treat its output as work,
   not as noise.
 
+The full set of controls — admitting a package, install scripts, release age, advisories,
+pinned pipeline actions, image digests and binary hashes, and federated pipeline
+credentials — is [28-supply-chain-and-build-inputs](28-supply-chain-and-build-inputs.md).
+The settings that cost nothing to turn on are
+[29-hardening-that-costs-nothing](29-hardening-that-costs-nothing.md).
+
 ---
 
 ## 9. Things that quietly become security surfaces
@@ -172,7 +178,7 @@ does both the plain-file prompt and the encrypted vault.
 | Surface | Why |
 |---|---|
 | A generated authorization or privacy table | Stale means fail-open, silently |
-| A tool-server endpoint allowlist | Decides which endpoints a machine client can reach |
+| A tool-server endpoint allowlist ([27](27-tool-servers-and-mcp.md) § 2) | Decides which endpoints a machine client can reach |
 | A cross-origin configuration | Too permissive means any site can call the API with the user's credential |
 | A public bucket path | Separated by nothing but the path |
 | An anonymous endpoint's tenant resolver | Missing means either a failure or the wrong tenant |

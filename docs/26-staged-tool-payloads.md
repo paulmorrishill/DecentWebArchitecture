@@ -13,6 +13,10 @@ API dispatcher swaps the id for the staged body, for tool-server callers only.**
 
 Reference implementation: Reference A, ADR "Anonymous JSON staging for MCP tool calls".
 
+This file is one pattern of the tool server. The tool server itself — the allowlist, the
+context budget, file uploads, the per-login tenant and the whole authorization lifecycle —
+is [27-tool-servers-and-mcp](27-tool-servers-and-mcp.md).
+
 ---
 
 ## 1. The flow

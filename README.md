@@ -93,6 +93,7 @@ Copy these into the new repository and keep them updated as the project learns:
 | File in this set | Lands in the repo as |
 |---|---|
 | [21-agent-working-rules](docs/21-agent-working-rules.md) | `AGENT_RULES.md`, or the agent instructions file the harness reads |
+| [28-supply-chain-and-build-inputs](docs/28-supply-chain-and-build-inputs.md) § 1 | the same instructions file — the dependency rule is written only, so it has to be where the agent reads |
 | [22-pitfalls-checklist](docs/22-pitfalls-checklist.md) | `PITFALLS.md` — append a section every time a class of defect reaches a deployed environment |
 | [20-decision-records](docs/20-decision-records.md) | `docs/adr/README.md` + `docs/adr/_template.md` |
 | `04`, `05`, `06` | `docs/architecture-guide.md` |
@@ -154,6 +155,9 @@ architecture they are applied to.
 | [24-glossary.md](docs/24-glossary.md) | Terms used across the set |
 | [25-typed-values-and-serialization.md](docs/25-typed-values-and-serialization.md) | Date and time types, money, the wire format, converters, client rehydration |
 | [26-staged-tool-payloads.md](docs/26-staged-tool-payloads.md) | Large agent tool-call bodies: anonymous staging, the dispatcher swap, cost ceilings |
+| [27-tool-servers-and-mcp.md](docs/27-tool-servers-and-mcp.md) | The agent tool surface: the allowlist in the API, context budget, file and JSON intake, per-login tenant, the OAuth broker and its consent page |
+| [28-supply-chain-and-build-inputs.md](docs/28-supply-chain-and-build-inputs.md) | Admitting a dependency, install scripts off, release age, advisories, pinned actions, digests and hashes, federated pipeline credentials |
+| [29-hardening-that-costs-nothing.md](docs/29-hardening-that-costs-nothing.md) | The settings that are already paid for: the flat-rate edge plan, identity, data, email, account, and what is NOT free |
 
 ---
 
