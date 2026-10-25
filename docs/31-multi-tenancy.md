@@ -1,20 +1,19 @@
 # 31 — Multi-tenancy: separate customers
 
-A **tenant** is another **customer**. Another organisation, with its own contract, its own
-brand, its own administrators, its own data controller, and its own right to take its data
-and leave.
+A **tenant** is another **customer**. Its own contract, its own brand, its own
+administrators, its own data controller, its own right to take its data and leave.
 
-That is not the same thing as a sub-unit inside one customer — a region, a chapter, a depot,
-a team. Those are **branches**, and they are
-[08-branches-and-data-scoping](08-branches-and-data-scoping.md). The two get confused
-constantly, and the confusion is expensive in one direction: a system built for branches and
-then sold to a second customer has to answer questions it never asked.
+A sub-unit inside one customer — a region, a chapter, a depot, a team — is a **branch**, and
+it is [08-branches-and-data-scoping](08-branches-and-data-scoping.md).
+
+**The test: if the person at the top may legitimately see all of it, it is branches. If they
+must not, it is tenants.**
 
 ```mermaid
 flowchart TD
     P["Platform<br/>the software, under a neutral name"]
-    T["Tenant / organisation<br/>the customer<br/>← this file"]
-    B["Branch<br/>their sub-unit<br/>→ 08-branches-and-data-scoping"]
+    T["Tenant / organisation<br/>the customer"]
+    B["Branch<br/>their sub-unit"]
     R["Rows"]
     P --> T --> B --> R
     classDef other fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
@@ -23,67 +22,143 @@ flowchart TD
     class T here;
 ```
 
-The one-line test: **if the person at the top may legitimately see all of it, it is
-branches. If they must not, it is tenants.**
-
-Reference implementations. Reference B (C#, relational) has run **database-per-tenant** in
-production for years, and most of the concrete mechanism below is its shape. Reference A
-(TypeScript, key/value cloud store) has branches only, and a written plan for adding the
-tenant level above them; its plan supplies the constraint analysis in § 3 and § 6.
+Reference B (C#, relational) has run store-per-tenant in production for years. Reference A
+(TypeScript, key/value cloud store) has branches and a written plan for the tenant level
+above them.
 
 ---
 
-## 1. Do these before the first customer
+## 1. The rules
 
-Almost nothing here is a refactor. The topology (§ 2) is one call, and the rest is
-configuration that must exist before the first brand literal is typed (§ 8).
+These are rules, not options. The sections after § 1 are the working detail behind them.
 
-These are the one-way doors. Walk through one and the fix is a migration, not an edit:
+### Naming
 
-| One-way door | What it costs later |
-|---|---|
-| A table or resource named after the first customer | Renaming a deployed table means migrating its data |
-| A globally unique key that should have been tenant-scoped | Two customers want the same slug on the day you find out |
-| Anything "shared" that is shared across customers | Each one is a cross-customer read, found one at a time |
-| An all-powerful top-level role | Splitting it later means auditing every endpoint that trusts it |
-| A mobile application identifier | Store identifiers cannot be changed after publication |
+**R1. Never put a customer's name in a table, bucket, queue, topic, role, domain, prefix or
+any other resource name.** Renaming a deployed resource is a data migration.
 
-**Build for one customer, and walk through none of them.** § 11 is the list.
+**R2. Give the platform a neutral name and a neutral domain on day one.** The first
+customer's brand on the platform's own domain is R1 with a longer tail.
+
+### Keys
+
+**R3. Put the tenant first in every key.** Every barrier in § 2.2 depends on it. Get this
+wrong and the strongest barrier is not available to you at all.
+
+**R4. Never give a user-chosen value a globally unique key.** Prefix it with the tenant. Two
+customers will choose the same slug.
+
+**R5. Never key a table on a bare user identity.** Prefix it. It does not collide until the
+day it does, and then it does so silently.
+
+**R6. Re-decide every key shape at the tenant boundary.** A key that was unique across one
+customer's branches is not unique across customers.
+
+### Topology
+
+**R7. Start with silo — one deployment per customer.** Nothing shared means nothing to leak.
+Leave only when the per-customer fixed cost or the per-customer release expectation hurts.
+
+**R8. On a relational store, never pool. Give each customer a database.** It is the normal
+answer there, and it makes offboarding a database hand-over.
+
+**R9. Never ship pooled mode with barriers that are all code.** See R12.
+
+**R10. Never put a protocol-adapter data store in production.** Run it as the local and test
+store, where a gap costs nothing (§ 3.1).
+
+**R11. Never create a table, or a set of tables, per customer on a key/value cloud store.**
+The table namespace is flat and account-wide, and the table quota is a hard ceiling (§ 3).
+
+### Barriers
+
+**R12. Every deployment has at least one barrier that is not code.** Scope the application's
+own role to the tenant's key prefix, or put the customer in a separate account.
+
+**R13. Never let the application hold a credential that can reach another tenant's data.** A
+secret the process holds does not stop the process.
+
+**R14. Never let the application fetch a credential for a tenant other than the one on the
+request.** That is R13 one step removed.
+
+**R15. Enforce the token at the edge and at the gateway, before any handler runs.** A token
+checked only inside the application is not checked on the path that forgot to check it.
+
+**R16. Never hand-roll authentication.** Managed identity service, its hosted sign-in page,
+its tokens. No password storage, no session table, no token signing, no sign-in form of your
+own ([18-security-and-privacy](18-security-and-privacy.md) § 1).
+
+**R17. Resolve the tenant from the verified claim and from nothing else.** Not a host, not a
+header, not a body field. A host may choose which sign-in page to show; it grants nothing.
+
+### Data
+
+**R18. Never share a table, a list or a namespace across customers.** § 5.1 is the list of
+shapes that look harmless and are not.
+
+**R19. A table is global only when the platform owns the data and no customer can write it.**
+A country list, a unit table, a public reference set. Write the reason on the table. If the
+reason needs more than one sentence, it is not global.
+
+**R20. Split the top-level role before anything trusts it.** Platform operator crosses
+customers and is audited. Tenant administrator crosses that customer's branches and nothing
+else.
+
+**R21. Never let a use case depend on the cross-tenant override.** One named type can switch
+customers, background work uses it, and a guard test fails on any use case that takes it
+(§ 4.3).
+
+**R22. Never default a job, a worker or a migration to one customer.** Enumerate the registry
+and iterate. A silent default is work that silently did not happen for everyone else.
+
+### Brand
+
+**R23. Never write a brand literal in source.** One schema-validated configuration object per
+customer, in version control, and a guard test that fails the build on any brand word,
+domain or sender name outside it.
+
+**R24. Never ship a fallback brand value.** A missing configuration value is a start failure.
+A fallback means a misconfigured deployment serves the wrong customer's name instead of
+refusing to start.
+
+**R25. Build one neutral mobile application that picks the customer.** A per-customer store
+listing costs a review, signing keys, metadata and a release process, on every release,
+forever. Take it only when a customer contractually requires its own.
+
+### Lifecycle
+
+**R26. Provision from a pool of pre-created, pre-migrated, unattached stores.** Creating and
+migrating during sign-up is visible to the user.
+
+**R27. Name a customer's store randomly, never from the customer's name.** A derived name
+leaks the customer list and strands you when a customer is renamed.
+
+**R28. A deploy is not finished until every customer's store is migrated.** The runner is
+re-runnable, reports per customer, and does not stop the rest on one failure.
+
+**R29. Suspended means read-only, on one flag, with the data untouched and sign-in working.**
+Hiding data or refusing sign-in turns a billing problem into an accusation of holding data
+hostage.
+
+**R30. Write the deletion list when the feature is built, not when the request arrives.**
+Every store, file prefix, backup, search index and registry row. Test it.
 
 ---
 
-## 2. The topology: silo first, and pooled only with a barrier under it
+## 2. Why R12 to R14: which barriers hold
 
-Three shapes exist. The verdict is at § 2.4; read § 2.1 to § 2.3 first, because the
-reasoning is what tells you when to leave the default.
-
-| | **A. Silo** — one deployment per customer | **B. Pooled** — one deployment, a tenant column | **C. Store-per-tenant** — one deployment, one data store each |
-|---|---|---|---|
-| Isolation | Physical. Separate account or project | Logical. Every row carries `tenantId` | Physical at the data layer, shared compute |
-| A missed filter | Cannot reach another customer | **Reads another customer** | Cannot reach another customer |
-| Fixed cost | × number of customers | One | One, plus one store each |
-| Cost of an idle customer | Full fixed cost | Almost nothing | The store's running cost |
-| Provisioning | A deploy | A row | Create and migrate a store |
-| Noisy neighbour | Impossible | Shared quotas (§ 6) | Shared compute only |
-| Per-customer release | Possible, and becomes expected | No | No |
-| Offboarding | Hand over an account | Export filtered rows | **Hand over a database** |
-| Fits a key/value cloud store | Yes | Yes — the default there | Only with a store that has databases (§ 3) |
-| Fits a relational store | Yes | Yes | Yes — the normal answer there |
-
-### 2.1 Barriers: what actually stops a cross-tenant read
-
-Every topology is a stack of barriers. They are not equal, and one question separates
-them: **can the running application get past this barrier by changing its own code?**
+One question ranks every barrier: **can the running application get past it by changing its
+own code?**
 
 ```mermaid
 flowchart TD
     REQ["A request that would read<br/>tenant B's data"]
-    B1["1 · CLAIM<br/>The edge and the gateway refuse a token that is not<br/>signed, current, and for one of our own clients"]
-    B2["2 · SCOPE<br/>The request scope is built from the claim.<br/>B is not it"]
-    B3["3 · FILTER<br/>The repository adds tenant = A to every read"]
-    B4["4 · PRINCIPAL<br/>The data service refuses: this role may touch<br/>only keys beginning A#"]
-    B5["5 · REACHABILITY<br/>B's data is in another account, on another network.<br/>No route, no principal"]
-    OUT(["Refused"])
+    B1["1 CLAIM<br/>The edge and the gateway refuse a token that is not<br/>signed, current, and for one of our own clients"]
+    B2["2 SCOPE<br/>The request scope is built from the claim.<br/>B is not it"]
+    B3["3 FILTER<br/>The repository adds tenant = A to every read"]
+    B4["4 PRINCIPAL<br/>The data service refuses: this role may touch<br/>only keys beginning A#"]
+    B5["5 REACHABILITY<br/>B's data is in another account, on another network.<br/>No route, no principal"]
+    OUT["Refused"]
     REQ --> B1 --> B2 --> B3 --> B4 --> B5 --> OUT
 
     classDef code fill:#fdecea,stroke:#c0392b,stroke-width:2px,color:#7b241c;
@@ -105,54 +180,27 @@ Red is code the application can change. Green is enforced outside the applicatio
 | **The compute's own identity, scoped at the data service** — a condition on the leading key, a prefix-scoped storage policy, a role per tenant | The data service, against the caller's principal | Obtaining a different principal | **Yes** |
 | **A separate account or network** | There is no route and no principal | An infrastructure change | **Yes** |
 
-### 2.2 A secret the application holds is not a barrier against the application
+### 2.1 A secret the application holds is not a barrier against the application (R13, R14)
 
 **If the running code can obtain the credential, the credential does not stop the running
 code.**
 
-```mermaid
-flowchart LR
-    subgraph PERM["PERMEABLE — the application holds the secret"]
-        direction TB
-        PA["Application<br/>holds the database login"]
-        PD[("Data store<br/>the password is valid,<br/>so the read is allowed")]
-        PA -- "connect as tenant B" --> PD
-    end
-    subgraph IMP["IMPERMEABLE — the application holds nothing"]
-        direction TB
-        IA["Application<br/>holds no credential"]
-        ID[("Data service<br/>checks the CALLER'S identity,<br/>refuses anything not A#")]
-        IA -- "read B#…" --> ID
-    end
-    PERM ~~~ IMP
+<img src="diagrams/secret-vs-identity.svg" alt="Left: the application holds the database login, connects as tenant B, and the store allows the read. Right: the application holds no credential, and the data service refuses anything outside tenant A." width="100%">
 
-    classDef bad fill:#fdecea,stroke:#c0392b,stroke-width:2px,color:#7b241c;
-    classDef good fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
-    class PA,PD bad;
-    class IA,ID good;
-```
+A database username and password in the configuration is reachable by every line of code in
+that process. Fetching a per-tenant credential at request time is the same thing one step
+removed: if the process can ask for any tenant's credential, the barrier is again "the code
+asked for the right one".
 
-On the left, one edited line reaches tenant B. On the right, no edit does, because the
-policy is not in the repository.
+### 2.2 How to satisfy R12
 
-- **A database username and password in the configuration is reachable by every line of
-  code in that process.** A developer who edits one line to point at another tenant's
-  database succeeds, and nothing outside the process objects.
-- **Fetching a per-tenant credential at request time is the same thing, one step removed.**
-  If the process can ask the secret store for any tenant's credential, the barrier is again
-  "the code asked for the right one".
-- **Make the compute's own identity unable to name the other tenant's data.** Then the
-  refusal comes from the data service rather than from your code, and the only way through
-  is to obtain a different identity — an infrastructure change, reviewed, applied and
-  logged, not an edit.
-
-Use the cheapest of these that your key shape allows:
+Take the first of these that your key shape allows:
 
 1. **Scope the compute's role by key prefix** — a condition on the leading key value, so the
-   role may address only items whose key begins with the tenant. One policy. No new
-   infrastructure. **This is the one to reach for first.**
-2. **Scope object storage by prefix** in the same way, so files are separated by a policy and
-   not only by a path ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 6.2).
+   role may address only items whose key begins with the tenant. One policy, no new
+   infrastructure. **Reach for this one.**
+2. **Scope object storage by prefix**, so files are separated by a policy and not only by a
+   path ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 6.2).
 3. **Derive a scoped-down session from the caller's own verified token**, so the credentials
    that exist during that request cannot address another tenant at all.
 4. **A role per tenant**, assumed from the verified claim. Take this when the data service
@@ -160,139 +208,84 @@ Use the cheapest of these that your key shape allows:
 5. **A separate account per tenant** (silo), where there is nothing to scope because there is
    nothing shared.
 
-**The caveat that decides whether you get any of this:** a leading-key condition works only
-when the tenant is the leading part of the key — which is exactly what
-[08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 7 already requires. Get the
-key shape wrong and this barrier is not available at all. That is why the key shape is fixed
-on day one and not revisited.
+Options 1 to 4 need the tenant to be the leading part of the key. That is R3.
 
-### 2.3 The swiss cheese model: never ship a stack that is all code
+### 2.3 Swiss cheese: which slices are code
 
-Each barrier is a slice with a known hole. A breach needs the holes to line up. What
-matters is which slices are code, because code holes move on every commit.
+Each barrier is a slice with a known hole. A breach needs the holes to line up. What matters
+is which slices are code, because code holes move on every commit.
 
-```mermaid
-flowchart TD
-    R["A request that would read<br/>another tenant's data"]
+<img src="diagrams/swiss-cheese.svg" alt="Five barrier slices. The request passes through the holes in the two code slices and is stopped by the infrastructure slice, whose hole is somewhere else." width="100%">
 
-    subgraph INFRA1["Not code — a reviewed, applied change moves these"]
-        S1["Slice 1 · Claim checked at the edge and the gateway<br/>hole: an endpoint that is not behind them"]
-    end
-    subgraph CODE["Code — these holes move on every commit"]
-        S2["Slice 2 · Scope resolved from the claim<br/>hole: no resolver on an anonymous path"]
-        S3["Slice 3 · Repository scoping<br/>hole: a raw client call, or a &quot;global&quot; table"]
-    end
-    subgraph INFRA2["Not code — a reviewed, applied change moves these"]
-        S4["Slice 4 · Principal scoped at the data service<br/>hole: wrong key shape, or a policy left wide"]
-        S5["Slice 5 · Separate account or network<br/>hole: none, while they are separate"]
-    end
-
-    R --> S1 --> S2 --> S3 --> S4 --> S5 --> OUT(["Blocked"])
-
-    classDef code fill:#fdecea,stroke:#c0392b,stroke-width:2px,color:#7b241c;
-    classDef infra fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
-    classDef plain fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
-    class S2,S3 code;
-    class S1,S4,S5 infra;
-    class R,OUT plain;
-```
-
-- **Slices 2 and 3 are code.** One merged pull request can open a hole in either, and the
-  guard tests of § 12 are the only thing watching.
-- **Slices 1, 4 and 5 are not code.** Their holes move only when the infrastructure changes
-  — a separate file, a separate review, a separate approval, an applied plan and an audit
-  record ([15-infrastructure-and-environments](15-infrastructure-and-environments.md)).
-- **A stack that is all code is one merged pull request from a breach. Do not ship one.**
-  Slice 1 is free and you should already have it
-  ([18-security-and-privacy](18-security-and-privacy.md) § 1). Slice 4 is one policy.
+Slices 2 and 3 are code: one merged pull request can open a hole in either, and the guard
+tests of § 9 are the only thing watching. Slices 1, 4 and 5 move only when infrastructure
+changes — a separate file, a separate review, an applied plan, an audit record
+([15-infrastructure-and-environments](15-infrastructure-and-environments.md)).
 
 > **With slice 4 or slice 5 in place, a developer who deliberately edits the application to
 > read another tenant's data does not succeed by editing the application.** The data service
 > refuses the principal. To succeed they must change the infrastructure — a reviewed, applied
-> and audited change — or obtain a different identity. That is the difference between "we
-> trust the code" and "the code is not trusted."
+> and audited change — or obtain a different identity.
 
-The limit of that claim, stated so the claim stays worth making: **someone who can change
-the infrastructure and get it applied can still do it.** Keep that change visible, reviewed
-and recorded, and keep the deploy role that can make it separate from the role the
-application runs as
+The limit of that claim, so the claim stays worth making: **someone who can change the
+infrastructure and get it applied can still do it.** Keep that change visible, reviewed and
+recorded, and keep the deploy role separate from the role the application runs as
 ([28-supply-chain-and-build-inputs](28-supply-chain-and-build-inputs.md) § 7).
-
-### 2.4 The verdict
-
-- **Start with silo.** Nothing new can leak, because there is nothing shared to leak
-  through. Its costs — money and release effort — are visible, and neither of them is a
-  breach. Stay there until the per-customer fixed cost, or the per-customer release
-  expectation, actually hurts.
-- **Move to pooled when idle customers get expensive, and only with slice 4 underneath it.**
-  Pooled with code-only barriers is the one combination to refuse: every endpoint, every
-  query and every "global" call becomes load-bearing for isolation, and all of them are
-  code. Pooled with the compute's identity scoped by key prefix (§ 2.2), the guard tests of
-  § 12, and § 5.1 worked through item by item is sound.
-- **On a relational store, prefer store-per-tenant over pooled.** It is the normal answer
-  there, it makes offboarding a database hand-over, and Reference B has run it in production
-  for years (§ 4).
-- **Do not put a protocol-adapter store-per-tenant in production yet** (§ 3.1). Run it as
-  the local and test store, where a gap costs nothing.
 
 ---
 
-## 3. What the cloud store does to the choice
+## 3. Why R11: what the cloud store imposes
 
 This set assumes a managed cloud key/value store — Reference A uses DynamoDB. Three of its
-properties decide which topologies are even available:
+properties decide which topologies exist at all:
 
-- **Table names live in one flat namespace per account and region.** There are no databases
-  or schemas to nest them in, so "the same table name for each customer" is not expressible.
-  Separating by name means `acme-orders`, `globex-orders`, … for **every** table.
-- **The account has a quota on tables.** The default is in the low thousands and can be
-  raised on request. Check the current number; do not design against a remembered one.
+- **Table names live in one flat namespace per account and region.** No databases, no
+  schemas. "The same table name for each customer" is not expressible.
+- **The account has a quota on tables**, in the low thousands by default and raisable on
+  request. Check the current number; never design against a remembered one.
 - **A table is a deployed resource** with its own indexes, protection settings, backups,
   alarms and entry in the infrastructure state.
 
 Reference A's one deployment has **137 tables**. So:
 
-| Idea | What actually happens |
+| Idea | What happens |
 |---|---|
-| A table set per customer | 137 × customers. The account table quota stops the product in the low tens of customers, and every infrastructure apply grows with it |
+| A table set per customer | 137 × customers. The quota stops the product in the low tens, and every infrastructure apply grows with it |
 | A tenant prefix on every table name | A rename of all 137 tables, and the quota problem is unchanged |
-| **A tenant attribute in the key** | No new tables, ever. This is why pooled is the default in a key/value store |
-| A separate account per customer | Silo. Works, and the fixed cost repeats per customer |
+| **A tenant attribute in the key** | No new tables, ever. This is why pooled is the default on a key/value store |
+| A separate account per customer | Silo (R7). Works, and the fixed cost repeats per customer |
 
-Two further things bite before the quota does: an infrastructure plan over thousands of
-tables is slow enough to change how the team works, and a permission document that lists
-tables by name stops fitting in the size limit. One that names a **prefix** does not.
+Two things bite before the quota does: an infrastructure plan over thousands of tables is
+slow enough to change how the team works, and a permission document that lists tables by
+name stops fitting the size limit. One that names a **prefix** does not.
 
-### 3.1 Store-per-tenant on a key/value store
+### 3.1 Why R10: store-per-tenant on a key/value store
 
-Option C needs a store that **has** databases. A wire-compatible adapter — a server that
-speaks the same protocol and stores the data in a relational database — gives you that
-without changing a line of repository code: only the endpoint and the credentials differ per
-customer, and the table names stay as they are.
+A wire-compatible adapter — a server speaking the same protocol, storing the data in a
+relational database — gives each customer a database without changing a line of repository
+code: only the endpoint and credentials differ, and the table names stay as they are.
 
-**Do not put this in production yet. Run it as the local and test store.** The trade, in
-full, because it moves the whole operational model:
+**Gained:** physical isolation with no table rename; a customer can hold its own database,
+even on its own infrastructure; offboarding is a hand-over; a missing tenant filter cannot
+read another customer.
 
-- **Gained:** physical per-customer isolation with no table rename; a customer can hold
-  their own database, even on their own infrastructure; offboarding is a database hand-over;
-  a missing tenant filter cannot read another customer, because the rows are elsewhere.
-- **Paid:** servers and a database to run, patch, back up and monitor, where there were
-  none; compute inside a private network, which puts every other outbound call behind a
-  gateway; static credentials in a secret store instead of a role; per-customer fixed cost
-  even while idle; the managed store's own recovery and export features replaced by the
-  database's.
-- **Where it earns its place today:** as the local and test store, in place of the usual
-  lightweight emulator, where it runs the same code path as production and a gap costs
-  nothing ([14-local-dev-and-simulators](14-local-dev-and-simulators.md)). Before anything
-  else depends on it, confirm that one such server gives each account its own table
-  namespace, and how far its feature coverage really goes.
+**Paid:** servers and a database to run, patch, back up and monitor, where there were none;
+compute inside a private network, which puts every other outbound call behind a gateway;
+static credentials in a secret store instead of a role; per-customer fixed cost while idle;
+the managed store's recovery and export features replaced by the database's.
+
+**Where it earns its place today:** as the local and test store, in place of the usual
+lightweight emulator, where it runs the same code path as production and a gap costs nothing
+([14-local-dev-and-simulators](14-local-dev-and-simulators.md)). Before anything else depends
+on it, confirm that one such server gives each account its own table namespace, and how far
+its feature coverage really goes.
 
 ---
 
-## 4. Store-per-tenant, in full
+## 4. Store-per-tenant, in full (R8, R21, R26, R27, R28)
 
-This is Reference B, in production. It is the clearest of the three, and even a pooled
-design should read it, because § 4.5 and § 4.6 are needed either way.
+Reference B, in production. Read it even for a pooled design: § 4.5 and § 4.6 are needed
+either way.
 
 ### 4.1 Two kinds of database
 
@@ -305,112 +298,89 @@ design should read it, because § 4.5 and § 4.6 are needed either way.
 | Quotas and allowances: storage, usage units, limits | |
 | Sign-in artifacts that must work before a customer is known: temporary tokens, OAuth records | |
 
-The rule that keeps it clean: **the central database holds what the platform owns, and what
-must be readable before the customer is known. Everything the customer owns is in their
-database.**
+**The central database holds what the platform owns, and what must be readable before the
+customer is known. Everything the customer owns is in their database.**
 
 ### 4.2 Routing, per request
 
-```
-token → the customer on it → their database name → request-scoped state
-                                                      ↓
-                              connection provider reads that state
-                                                      ↓
-                              every repository on this request
+```mermaid
+flowchart TD
+    TOK["The authenticated token"]
+    CUS["The customer on it"]
+    REG["Tenant registry<br/>central database"]
+    NAME["Their database name"]
+    ST["Request-scoped state<br/>set once, immutable for this request"]
+    CP["Connection provider<br/>reads that state"]
+    REPO["Every repository on this request"]
+    TOK --> CUS --> REG --> NAME --> ST --> CP --> REPO
+    classDef plain fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
+    classDef key fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    class TOK,CUS,NAME,CP,REPO plain;
+    class REG,ST key;
 ```
 
-Rules:
-
-- **The database name is resolved server-side from the authenticated token**, through the
-  tenant registry. It is never a request parameter. A client that can name its database is a
-  client that can name someone else's.
-- **It is set once, at the start of the request, and is immutable for that request.**
-- **It lives in one request-scoped state object** that the connection provider reads. No
-  repository takes a connection string, and no repository knows which customer it is serving
+- **The database name is resolved server-side from the token**, through the registry. Never a
+  request parameter. A client that can name its database can name someone else's (R17).
+- **Set once, at the start of the request, immutable for that request.**
+- **It lives in one request-scoped state object** the connection provider reads. No repository
+  takes a connection string, and no repository knows which customer it serves
   ([03-backend-domain-and-ports](03-backend-domain-and-ports.md)).
-- A request that resolved no customer gets no customer database. It is not defaulted.
+- A request that resolved no customer gets no customer database. It is not defaulted (R22).
 
-### 4.3 The cross-tenant override is one named thing, and a test forbids its spread
+### 4.3 The cross-tenant override, and the test that contains it (R21)
 
-Background work, scheduled jobs and the operator console legitimately need to point a
-request at another customer's database. Reference B has exactly one type that can do it.
+Background work, scheduled jobs and the operator console legitimately need to point a request
+at another customer's database. **Exactly one named type can do it.**
 
-**A guard test asserts that no use case takes that type as a constructor dependency.** It
-reflects over every operation class and fails on any that does. That is the whole control,
-and it is worth copying verbatim:
+**A guard test reflects over every operation class and fails on any that takes that type as a
+constructor dependency.** That is the whole control, and it is worth copying verbatim:
 
 - A request-driven path that can choose its customer is the breach, not the mechanism.
-- If a use case ever genuinely needs it, the test fails first and the decision gets made
+- If a use case ever genuinely needs it, the test fails first and the exception is made
   deliberately, instead of arriving unnoticed in a parameter list
   ([12-testing-integration-and-guards](12-testing-integration-and-guards.md)).
 
-### 4.4 Provisioning from a pool
+### 4.4 Provisioning from a pool (R26, R27)
 
-Creating and migrating a database takes long enough to be visible during sign-up. So the
-platform keeps **pre-created, already-migrated, unattached databases**, and sign-up
-*attaches* one:
-
-- Take an unattached database; if there is none, create one now.
+- Take an unattached, already-migrated database; if there is none, create one now.
 - Attach it to the new customer in the registry.
-- An operator action tops the pool back up, and the count of unattached databases is a
-  monitored number.
-- The database name is **random**, not derived from the customer's name — checked for
-  collision before use. A derived name leaks the customer list to anyone who can see a
-  database name, and it strands you when a customer is renamed.
+- An operator action tops the pool back up. The count of unattached databases is monitored.
+- The name is random, checked for collision before use.
 
-### 4.5 Migrations run per customer, and that is a release-shaped problem
+### 4.5 Migrations run per customer (R28)
 
-There are **two** migration sets: central, and per-customer. The per-customer set runs once
-for every customer database, including the unattached ones in the pool.
+Two migration sets: central, and per-customer. The per-customer set runs for every customer
+database, including the unattached pool.
 
-This is the part that gets underestimated:
-
-- A deploy is not finished when the code is out. It is finished when every customer database
-  is migrated.
-- A migration that fails on customer 400 of 500 leaves the estate on two schemas. The
-  migration runner must be re-runnable, must report per customer, and must not stop the
-  others.
-- Code must tolerate both schemas for the length of that window, exactly as in a rolling
-  deploy ([16-ci-cd](16-ci-cd.md)).
+- A migration that fails on customer 400 of 500 leaves the estate on two schemas. Re-runnable,
+  per-customer reporting, does not stop the others.
+- Code tolerates both schemas for the length of that window, as in a rolling deploy
+  ([16-ci-cd](16-ci-cd.md)).
 - Migration time grows with the customer count. It is the first thing that makes a release
   slow.
 
-### 4.6 Everything else that must iterate customers
+### 4.6 Everything else that iterates customers (R22)
 
-Scheduled jobs, backups and batch work have no request and therefore no customer. Each one
-takes an explicit **tenant enumeration** from the same registry the migrations use, and
-loops, setting the override per customer.
+Scheduled jobs, backups and batch work have no request and therefore no customer. Each takes
+an explicit tenant enumeration from the same registry the migrations use, and loops.
 
-- **Never a default.** A job that silently runs against one customer is a job that silently
-  does not run for the others.
-- **One customer's failure must not stop the rest.** Report per customer and continue.
-- **Backups are per customer**, named per customer, and restorable for one customer without
+- One customer's failure must not stop the rest. Report per customer and continue.
+- **Backups are per customer**, named per customer, restorable for one customer without
   touching another. That is most of why this topology is bought.
 
 ---
 
-## 5. Pooled mode: what it actually takes
+## 5. Pooled mode: what R9 costs you
 
 Pooled is a tenant attribute on every row — the same mechanism as
 [08-branches-and-data-scoping](08-branches-and-data-scoping.md), one level up, with the same
-explicit-not-ambient rule, the same base class, the same guard. What follows is everything
-that mechanism does **not** cover.
+explicit-not-ambient rule, the same base class, the same guard. What follows is what that
+mechanism does **not** cover.
 
-**Before any of it: give pooled mode a barrier that is not code** (§ 2.2). Scope the
-compute's own identity by the leading key value, so the data service refuses a read of
-another tenant's items whatever the application asks for. Everything in § 5 is a slice with
-a hole in it; that one is not, and it is a policy rather than a project.
+### 5.1 The shapes R18 and R19 are about
 
-### 5.1 Every "global" table is now a cross-customer leak
-
-This is the single largest defect class, and every item is found separately, by hand.
-
-**Scope every one of them to the tenant.** Keep a global one only where the data is the
-platform's own and no customer can write it — a country list, a unit table, a public
-reference set — and write that reason beside it.
-
-These are the shapes that were right across one customer's branches and are wrong across
-customers ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 3):
+Every one of these was right across one customer's branches and is wrong across customers.
+Each is found separately, by hand:
 
 | Shape | What it becomes |
 |---|---|
@@ -419,220 +389,152 @@ customers ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 3)
 | Content marked "shared globally" | One customer's material in another's library |
 | A shared template or course catalogue | The same, plus an editing right across customers |
 | A global tag or category namespace | A collision, and a list of another customer's terms |
-| A shared reference data set | Usually still correct — write down why |
+| A shared reference data set | Usually still correct — this is the R19 case |
 
-If you cannot write the reason in one sentence, it is not global. Scope it.
-
-### 5.2 Keys that were globally unique stop being so
+### 5.2 Keys (R4, R6)
 
 A branch slug that is the primary key is unique across the whole system. Two customers both
-want `north`, `canterbury`, `main`. The key becomes `tenantId#slug`, by the rule in
-[08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 7, and the collision gets
-its own declared error value.
+want `north`, `canterbury`, `main`. The key becomes `tenantId#slug`, and the collision gets
+its own declared error value
+([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 7).
 
-### 5.3 The top-level role has to split in two
+### 5.3 The role split (R20)
 
-A single all-powerful role that bypasses every check and can switch into any branch becomes,
-in pooled mode, a role that can read every customer. It splits:
+| Role | May cross | Notes |
+|---|---|---|
+| Platform operator | Customers | The vendor's own staff. Few, audited, every cross-customer action recorded |
+| Tenant administrator | That customer's branches | The customer's own top role. Nothing else |
 
-- **Platform operator** — the vendor's own staff. Can cross customers. Few, audited, and
-  every cross-customer action is recorded.
-- **Tenant administrator** — the customer's own top role. Can cross their own **branches**,
-  and nothing else.
-
-Every endpoint that trusts the old role has to be re-read. That is why it is on the one-way
-door list in § 1.
-
-### 5.4 Resolving the tenant
-
-**The verified claim on the token decides. Nothing else does.**
-
-The host the request arrived on (`<branch>.<customer domain>` or
-`<customer>.<platform domain>`) may choose which sign-in page to show and which identity
-client to use. It does not grant anything. A tenant taken from a host, a header or a body
-field is a tenant the caller chose, and treating it as authoritative is the breach.
-
-Enforce the claim at the edge as well as in the application
-([18-security-and-privacy](18-security-and-privacy.md) § 1): the gateway refuses a token
-whose audience is not one of the platform's own clients before a handler exists.
+Every endpoint that trusted the old single all-powerful role has to be re-read. That is why
+R20 says "before anything trusts it".
 
 ---
 
-## 6. The per-account limits that bite pooled mode
+## 6. The per-account limits that cap pooled mode
 
 A pooled deployment shares one cloud account between all customers, and several platform
-services are **one per account** or **one per region**. Each of these has stopped a pooled
-design somewhere:
+services are one per account or one per region. **Count these before committing to pooled and
+put the numbers in the decision record** ([20-decision-records](20-decision-records.md)) —
+each is a ceiling on customer count, separate from the data:
 
 | Limit | Consequence |
 |---|---|
 | One **active** inbound-mail receipt rule set per account and region | Inbound mail for every customer goes through one rule set |
-| One custom domain per identity pool | Each customer on their own sign-in host needs its own pool, or everyone shares one neutral host |
-| Messaging sender identifiers registered per account | One sender name for every customer, unless each registers their own |
+| One custom domain per identity pool | A customer on its own sign-in host needs its own pool, or everyone shares one neutral host |
+| Messaging sender identifiers registered per account | One sender name for every customer, unless each registers its own |
 | Resource name-length budgets | A per-customer prefix on an already-long name does not fit |
-| Certificate, domain and distribution counts per account | A ceiling on customers, separate from the data |
+| Certificate, domain and distribution counts per account | A ceiling on customers |
 | Shared request, concurrency and throughput quotas | One busy customer degrades the others |
 | A shared table quota (§ 3) | Any per-customer table is multiplied |
 
-**Count these before you commit to pooled, and put the numbers in the decision record.**
-They are the limits that do not show up in a prototype with two customers, and each one is
-a ceiling on how many customers the deployment can hold — a different ceiling from the
-data.
+### 6.1 What is per tenant and is not a row
 
----
-
-## 7. What is per-tenant and is not a row
-
-Isolating the data is the part everyone plans. This table is the part that gets found later:
-
-**Authentication stays managed, and stays enforced at the edge, in every topology.** One
-managed identity service, its hosted sign-in page, and the token checked at the content
-delivery network or load balancer and at the API gateway before any handler runs
-([18-security-and-privacy](18-security-and-privacy.md) § 1). Multi-tenancy is not a reason
-to write a sign-in form, a session store or a token issuer: a per-tenant sign-in page is a
-**branding** problem ([30-sign-in-branding-and-email](30-sign-in-branding-and-email.md)),
-and a per-tenant boundary is a pool, a client or a claim — never your own code on the
-authentication path.
+One managed identity service, its hosted sign-in page, and the token checked at the edge and
+the gateway, in every topology (R15, R16). A per-tenant sign-in page is a **branding**
+problem ([30-sign-in-branding-and-email](30-sign-in-branding-and-email.md)); a per-tenant
+boundary is a pool, a client or a claim — never your own code on the authentication path.
 
 | Per tenant | Notes |
 |---|---|
-| Identity pool, sign-in host, token audience | § 6 — usually the first hard limit. One pool with a tenant claim is the low-risk default; a pool per tenant only when a customer must own its own sign-in host |
-| Mail sending identity, with its own SPF, DKIM and DMARC records | A customer sends as themselves, or not at all ([30-sign-in-branding-and-email](30-sign-in-branding-and-email.md)) |
+| Identity pool, sign-in host, token audience | One pool with a tenant claim is the default; a pool per tenant only when a customer must own its sign-in host |
+| Mail sending identity, with its own SPF, DKIM and DMARC records | A customer sends as itself, or not at all |
 | Inbound mail address or domain | § 6 |
 | Messaging sender identifier | § 6 |
 | Custom domains and their certificates | Including the sign-in host |
-| Brand: names, logo, colours, fonts, imprint, legal text | § 8 |
+| Brand: names, logo, colours, fonts, imprint, legal text | § 7 |
 | File storage prefix, and the signed-link policy over it | A prefix per customer, never a shared directory |
 | Billing, subscription, payment-provider customer | Central, in every topology |
 | Quotas and allowances, and what happens at the limit | Central |
 | Any generative-AI context describing the organisation | Prompts carry the brand too |
-| Mobile application identity | One neutral application that picks a customer, or one per customer (§ 9) |
-| Data controller, privacy notice, retention policy | Legal, per customer, and it drives deletion |
+| Mobile application identity | R25 |
+| Data controller, privacy notice, retention policy | Legal, per customer, and it drives R30 |
 
 ---
 
-## 8. Brand configuration is one object, and no literal escapes it
+## 7. Brand configuration (R23, R24)
 
-White-labelling fails in one specific way: the brand is not in one place, so "change the
-name" is a search across the repository, and the search is never complete. Reference A
-measured its own: **1,710 matching lines in 594 files** for one brand word, mixed in with
-unrelated uses of the same word.
+White-labelling fails in one way: the brand is not in one place, so "change the name" is a
+search, and the search is never complete. Reference A measured its own: **1,710 matching
+lines in 594 files** for one brand word, mixed with unrelated uses of the same word.
 
-The rule: **every brand value comes from one configuration object, and no brand literal
-exists in source outside that object's files.**
-
-- **A schema-validated file per customer, in version control**, reviewed like code. Start
-  with exactly one, holding today's values, so the first change alters no output at all.
-- **A byte-identical test for that first change.** Every email, every public page, rendered
-  before and after, identical. That is what makes a 594-file change safe.
-- **A guard test for the rule itself:** no brand word, domain or sender name as a literal
-  anywhere outside the configuration files, tests and fixtures. Put it in the gate. It is
-  the "did we get all of them" check, and it is also what stops the next one appearing
+- **A schema-validated file per customer, in version control**, reviewed like code. Start with
+  exactly one, holding today's values, so the first change alters no output.
+- **A byte-identical test for that first change.** Every email and public page rendered before
+  and after, identical. That is what makes a 594-file change safe.
+- **A guard test for R23:** no brand word, domain or sender name as a literal outside the
+  configuration files, tests and fixtures. In the gate
   ([12-testing-integration-and-guards](12-testing-integration-and-guards.md)).
-- **A branch may override a small, listed set** of those values — a join link, an imprint, a
-  hero image, a sender name. Everything else inherits. Keep that list short and explicit.
+- **A branch may override a short, listed set** — a join link, an imprint, a hero image, a
+  sender name. Everything else inherits.
 
-### 8.1 Delivery: one mechanism per consumer
+### 7.1 Delivery: one mechanism per consumer
 
 | Consumer | How it gets the configuration |
 |---|---|
 | Infrastructure | Generated variables per customer and environment, written by a script, never committed ([06-api-contract-and-codegen](06-api-contract-and-codegen.md)) |
-| Server, run time | A configuration port, read at start from the environment. **Missing value is a start failure, never a fallback** ([07-composition-and-entrypoints](07-composition-and-entrypoints.md)) |
+| Server, run time | A configuration port, read at start from the environment. Missing value is a start failure (R24) |
 | Web client, run time | One anonymous endpoint returning the brand for the current host, cached for first paint |
-| Web client, build time | Page title, icons, and any pre-rendered share pages, generated before the bundle |
+| Web client, build time | Page title, icons, any pre-rendered share pages, generated before the bundle |
 | Mobile, build time | Application name, identifier, icons, splash, permission strings |
 | Mobile, run time | Display name, theme, logo, categories — cached with the offline store ([10-mobile](10-mobile.md)) |
 
-**A fallback brand value is a defect.** It means a misconfigured deployment starts and
-serves the wrong customer's name instead of refusing to start.
+---
+
+## 8. Lifecycle (R26 to R30)
+
+**Provision:** create the store or the rows, run the migrations, attach the domains and the
+identity, verify the mail identity, seed the defaults, record the customer in the registry.
+From a pool (R26).
+
+**Suspend:** read-only, one flag, data untouched, sign-in working (R29).
+
+**Export:** the customer is entitled to its data. Store-per-tenant is a database hand-over.
+Pooled is a filtered export, and **the filter is the same code path the isolation tests
+cover**, or it will miss a table.
+
+**Delete:** on request, and on the retention policy. Every store, file prefix, backup, search
+index and registry row (R30).
 
 ---
 
-## 9. The mobile application
-
-**Build one neutral application that picks the customer.** Treat a per-customer listing as
-a paid option, taken only when a customer requires its own.
-
-- **One neutral application that picks the customer** — the default. Discovery before sign-in — a code, or
-  the email domain, resolved to that customer's API host and identity client. The customer
-  becomes part of the local storage namespace. One listing, one review, one set of signing
-  keys. A neutral listing also avoids a store rejecting an application that looks like it
-  impersonates an organisation.
-- **One application per customer** — only when a customer requires their own listing. Each
-  one costs a store review, its own signing keys, its own metadata, and its own release
-  process, on every release, forever.
-
----
-
-## 10. The lifecycle nobody designs until it happens
-
-**Provision:** create the data store or the rows, run the migrations, attach the domains and
-the identity, verify the mail identity, seed the defaults, record the customer in the
-registry. From a pool where that takes too long to do during sign-up (§ 4.4).
-
-**Suspend:** non-payment, or a customer request. **Suspended means read-only, on one flag,
-with the data untouched.** Sign-in still works, so the customer can see their data, pay, and
-export. Hiding the data or refusing sign-in turns a billing problem into a support incident
-and an accusation of holding data hostage.
-
-**Export:** the customer is entitled to their data. In store-per-tenant this is a database
-hand-over. In pooled it is a filtered export, and **the filter is the same code path that
-the isolation tests cover**, or it will miss a table.
-
-**Delete:** on request, and on the retention policy. Every store, every file prefix, every
-backup, every search index, and the registry row. Write the list down when the feature is
-built, not when the request arrives, and test it.
-
----
-
-## 11. The cheap path to being ready
-
-You do not need the topology before the first customer. You do need to avoid the one-way
-doors in § 1. Do these, in order, while there is still only one customer:
-
-1. **Build the brand configuration object now** (§ 8), with one customer in it and a
-   byte-identical test. It is topology-independent and it is the expensive part to retrofit.
-2. **Add the neutral-strings guard to the gate** (§ 8) on the same day.
-3. **Give the platform a neutral name and a neutral domain**, separate from the first
-   customer's brand.
-4. **Name no table, bucket, queue or role after the first customer.**
-5. **Scope the keys as if there were a tenant above the branch** — write in each decision
-   record which rule the key follows ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 7).
-6. **Keep the list of deliberately global data** (§ 5.1) as a list, in one place, so the
-   migration is a review rather than an archaeology exercise.
-7. **Split the top-level role** before anything else trusts it (§ 5.3).
-8. **Put one barrier that is not code under the data access** (§ 2.2): scope the compute's
-   role by the leading key value. It costs one policy, it works with one customer, and it is
-   the slice that still holds when a code barrier is removed.
-9. **Then choose:** silo for the first few customers, because it adds no new leak class and
-   needs no data-model change. Re-decide at the point where the per-customer fixed cost, or
-   the per-customer release expectation, starts to hurt.
-
----
-
-## 12. Tests
+## 9. Tests
 
 - **Cross-tenant isolation**, modelled on the cross-branch suite
-  ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 8), over every table
-  that stopped being global.
-- **The cross-tenant override reachability test** (§ 4.3): no use case depends on the type
-  that can switch customers.
-- **The neutral-strings guard** (§ 8), in the gate.
-- **A barrier test for the non-code slice** (§ 2.2), and it is the one test here that must
-  run against the real data service rather than a fake: with the application's own role,
-  read an item belonging to another tenant and assert the **data service** refuses it. A
-  fake repository cannot fail this test, which is why it belongs with the integration tests
-  ([12-testing-integration-and-guards](12-testing-integration-and-guards.md)).
-- **An infrastructure guard** that the role policy still carries the key-prefix condition,
-  so widening it is a failing test rather than a quiet commit.
+  ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 8), over every table that
+  stopped being global.
+- **The barrier test for R12**, and it is the one test here that must run against the real
+  data service rather than a fake: with the application's own role, read an item belonging to
+  another tenant and assert the **data service** refuses it. A fake repository cannot fail
+  this test ([12-testing-integration-and-guards](12-testing-integration-and-guards.md)).
+- **An infrastructure guard** that the role policy still carries the key-prefix condition, so
+  widening it is a failing test rather than a quiet commit.
+- **The cross-tenant override reachability test** (R21).
+- **The brand-literal guard** (R23), in the gate.
 - **Configuration schema tests:** a missing key, an over-long sender identifier, an invalid
-  colour — each one a start failure with a message naming the key.
-- **Byte-identical rendering** of every email and public page across the configuration
-  change (§ 8).
+  colour — each a start failure naming the key (R24).
+- **Byte-identical rendering** of every email and public page across the configuration change.
 - **A second configuration in the test suite** — a fictional customer — and a test that its
   rendered output contains no trace of the first customer's brand.
-- **End to end:** a branch override shows on that branch and not on another; a customer's
-  administrator cannot reach another customer's data through any list, search, export or
-  client sync payload.
-- **Migration estate test** (store-per-tenant): the runner migrates every store including
-  the unattached pool, is re-runnable, and reports per customer.
+- **End to end:** a customer's administrator cannot reach another customer's data through any
+  list, search, export or client sync payload.
+- **Migration estate test** (store-per-tenant): the runner migrates every store including the
+  unattached pool, is re-runnable, and reports per customer (R28).
+
+---
+
+## 10. Do these before the first customer
+
+R1 to R6, R12, R15, R16, R20, R23 and R24 cost nothing while there is one customer, and each
+is a migration once there are two:
+
+1. The brand configuration object, with one customer in it and a byte-identical test (R23).
+2. The brand-literal guard in the gate (R23).
+3. A neutral platform name and domain (R2).
+4. No resource named after the first customer (R1).
+5. Tenant-first keys, with the key shape written in each decision record (R3 to R6).
+6. The list of deliberately global data, in one place, so § 5.1 is a review and not
+   archaeology (R19).
+7. The top-level role split (R20).
+8. One non-code barrier under the data access (R12) — one policy, and it works with one
+   customer.
+9. Then take R7: silo, until it hurts.

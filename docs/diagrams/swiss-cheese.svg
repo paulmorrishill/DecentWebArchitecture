@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 580" width="1180" height="580" role="img" aria-label="Five barrier slices. The request passes through the holes in the two code slices and is stopped by the infrastructure slice, whose hole is somewhere else.">
+  <title>Swiss cheese: the slices that are code, and the slices that are not</title>
+  <desc>A request descends through five barrier slices. Slices 2 and 3 are code and their holes line up with the request. Slice 4 is infrastructure, its hole is elsewhere, so the request is blocked there.</desc>
+
+  <rect x="0" y="0" width="1180" height="580" fill="#ffffff"/>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c0392b"/>
+    </marker>
+  </defs>
+
+  <style>
+    .lbl  { font: 600 14px -apple-system, "Segoe UI", Arial, sans-serif; fill: #24323f; }
+    .sub  { font: 400 12.5px -apple-system, "Segoe UI", Arial, sans-serif; fill: #5b6b7f; }
+    .tag  { font: 700 10.5px -apple-system, "Segoe UI", Arial, sans-serif; letter-spacing: .08em; }
+    .head { font: 700 15px -apple-system, "Segoe UI", Arial, sans-serif; fill: #24323f; }
+    .note { font: 700 13px -apple-system, "Segoe UI", Arial, sans-serif; }
+  </style>
+
+  <!-- the attack, descending through x = 150 -->
+  <text x="150" y="26" class="head" text-anchor="middle">A request that would read</text>
+  <text x="150" y="46" class="head" text-anchor="middle">another tenant's data</text>
+  <line x1="150" y1="58" x2="150" y2="386" stroke="#c0392b" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <!-- ── slice 1 : NOT CODE, hole elsewhere (the request has a valid token, so it passes) ── -->
+  <path d="M 110 112 L 650 112 L 590 152 L 50 152 Z" fill="#e8f6ec" stroke="#1e8449" stroke-width="2"/>
+  <ellipse cx="150" cy="132" rx="32" ry="12" fill="#ffffff" stroke="#1e8449" stroke-width="2"/>
+  <ellipse cx="430" cy="132" rx="22" ry="10" fill="#ffffff" stroke="#1e8449" stroke-width="2"/>
+  <text x="690" y="120" class="tag" fill="#1e8449">NOT CODE</text>
+  <text x="690" y="140" class="lbl">Slice 1 · Claim checked at the edge and the gateway</text>
+  <text x="690" y="158" class="sub">hole: an endpoint that is not behind them</text>
+
+  <!-- ── slice 2 : CODE, hole under the request ── -->
+  <path d="M 110 194 L 650 194 L 590 234 L 50 234 Z" fill="#fdecea" stroke="#c0392b" stroke-width="2"/>
+  <ellipse cx="150" cy="214" rx="32" ry="12" fill="#ffffff" stroke="#c0392b" stroke-width="2"/>
+  <ellipse cx="470" cy="214" rx="20" ry="9" fill="#ffffff" stroke="#c0392b" stroke-width="2"/>
+  <text x="690" y="202" class="tag" fill="#c0392b">CODE</text>
+  <text x="690" y="222" class="lbl">Slice 2 · Scope resolved from the claim</text>
+  <text x="690" y="240" class="sub">hole: no resolver on an anonymous path</text>
+
+  <!-- ── slice 3 : CODE, hole under the request ── -->
+  <path d="M 110 276 L 650 276 L 590 316 L 50 316 Z" fill="#fdecea" stroke="#c0392b" stroke-width="2"/>
+  <ellipse cx="150" cy="296" rx="32" ry="12" fill="#ffffff" stroke="#c0392b" stroke-width="2"/>
+  <ellipse cx="520" cy="296" rx="24" ry="10" fill="#ffffff" stroke="#c0392b" stroke-width="2"/>
+  <text x="690" y="284" class="tag" fill="#c0392b">CODE</text>
+  <text x="690" y="304" class="lbl">Slice 3 · Repository scoping</text>
+  <text x="690" y="322" class="sub">hole: a raw client call, or a global table</text>
+
+  <!-- ── slice 4 : NOT CODE, NO hole under the request → blocked ── -->
+  <path d="M 110 358 L 650 358 L 590 398 L 50 398 Z" fill="#e8f6ec" stroke="#1e8449" stroke-width="3"/>
+  <ellipse cx="400" cy="378" rx="26" ry="11" fill="#ffffff" stroke="#1e8449" stroke-width="2"/>
+  <text x="690" y="366" class="tag" fill="#1e8449">NOT CODE</text>
+  <text x="690" y="386" class="lbl">Slice 4 · Principal scoped at the data service</text>
+  <text x="690" y="404" class="sub">hole: wrong key shape, or a policy left wide</text>
+
+  <!-- blocked marker, sitting on slice 4 under the request -->
+  <circle cx="150" cy="378" r="18" fill="#ffffff" stroke="#1e8449" stroke-width="3"/>
+  <line x1="139" y1="367" x2="161" y2="389" stroke="#1e8449" stroke-width="3" stroke-linecap="round"/>
+  <line x1="161" y1="367" x2="139" y2="389" stroke="#1e8449" stroke-width="3" stroke-linecap="round"/>
+  <text x="150" y="424" class="note" fill="#145a32" text-anchor="middle">BLOCKED</text>
+  <text x="150" y="442" class="sub" text-anchor="middle">no hole here</text>
+
+  <!-- ── slice 5 : NOT CODE ── -->
+  <path d="M 110 462 L 650 462 L 590 502 L 50 502 Z" fill="#e8f6ec" stroke="#1e8449" stroke-width="2"/>
+  <text x="690" y="470" class="tag" fill="#1e8449">NOT CODE</text>
+  <text x="690" y="490" class="lbl">Slice 5 · Separate account or network</text>
+  <text x="690" y="508" class="sub">hole: none, while they are separate</text>
+
+  <!-- legend -->
+  <rect x="50" y="536" width="15" height="15" fill="#fdecea" stroke="#c0392b" stroke-width="2"/>
+  <text x="73" y="548" class="sub">Code — these holes move on every commit</text>
+  <rect x="400" y="536" width="15" height="15" fill="#e8f6ec" stroke="#1e8449" stroke-width="2"/>
+  <text x="423" y="548" class="sub">Infrastructure — these holes move only through a reviewed, applied change</text>
+</svg>
