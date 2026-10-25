@@ -4,6 +4,22 @@
 
 ## 1. Authentication
 
+**The recommendation, before the detail: use the platform's managed identity service for
+all authentication, and enforce the token at the edge — the content delivery network or the
+load balancer, and the API gateway — before any application code runs. Do not hand-roll
+any part of it.**
+
+That means: no password storage, no password hashing, no session table, no reset-link
+generator, no token signing, no sign-in form of your own. Those are the parts that are
+repeatedly got wrong, and the managed service has already solved them. The sign-in page is
+the provider's hosted page, styled and on your own domain
+([30-sign-in-branding-and-email](30-sign-in-branding-and-email.md)).
+
+Enforcing at the edge matters as much as the provider does. A token checked only inside the
+application is a token that is not checked on the path that forgot to check it. The gateway
+refuses an unsigned, expired or wrong-audience token before a handler exists, so an
+unauthenticated request never reaches code at all.
+
 - An external identity provider issues tokens. The application never stores a password.
 - The gateway or the entrypoint **verifies** the token before any application code runs.
   Claims reaching the `CallerIdentity` and `CallerRoles` ports are verified claims.
@@ -73,7 +89,7 @@ Beyond the gate:
 - **Never place personal data in a URL**, a query string, a log line, or an error
   report's tags.
 - A public, unauthenticated asset is world-readable to anyone who guesses its path. Person-
-  level data never goes there. See [08-multi-tenancy](08-multi-tenancy.md) § 5.
+  level data never goes there. See [08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 6.2.
 
 ---
 

@@ -218,6 +218,15 @@ AI clients at the identity provider and step aside.
 authentication to the identity provider's hosted sign-in page. It issues its own opaque
 tokens, and maps each one to the stored identity-provider tokens.
 
+**Read this as the narrow exception it is.** The standing rule is the managed identity
+service for all authentication, enforced at the edge, with nothing hand-rolled
+([18-security-and-privacy](18-security-and-privacy.md) § 1). This is the one place that
+rule bends; it bends only because of the missing dynamic client registration; and it bends
+as little as it can — the SDK owns every primitive, the user still authenticates on the
+provider's own hosted page, the tool server never sees a password, and the API still
+decides every authorization from the provider's own token. **Do not read this file as a
+licence to write an authorization server anywhere else.**
+
 - **Build the facade on the protocol SDK's own router and provider interface.** PKCE
   verification, redirect-URI validation, client authentication, registration and the
   basic rate limits are then SDK code. What the repository adds is the brokering.

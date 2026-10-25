@@ -33,7 +33,7 @@ instead of it.
 - [ ] **Data.** What rows are created? What is the key shape, and where does the key value
       come from? ([05-repositories-and-persistence](05-repositories-and-persistence.md) § 4)
 - [ ] **Tenancy.** Scoped or global? If global, why, and what stops one tenant reading
-      another's data? ([08-multi-tenancy](08-multi-tenancy.md))
+      another's data? ([08-branches-and-data-scoping](08-branches-and-data-scoping.md))
 - [ ] **Roles.** Who may do each operation? What does each role see?
 - [ ] **Personal data.** Does any response carry it? ([18-security-and-privacy](18-security-and-privacy.md) § 3)
 - [ ] **Deletion.** What happens to related data? Soft or hard? Who may?

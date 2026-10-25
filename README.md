@@ -67,6 +67,10 @@ Read in this order, and do the work in this order:
 1. [01-principles](docs/01-principles.md) — the rules that everything else follows from.
 2. [02-repository-layout](docs/02-repository-layout.md) — create the directories and the package boundaries first.
 3. [15-infrastructure-and-environments](docs/15-infrastructure-and-environments.md) — decide environments and naming before code.
+   If the product could ever have a second **customer**, read
+   [31-multi-tenancy](docs/31-multi-tenancy.md) § 11 at the same time: it is a short list of
+   things that are cheap today and expensive once a table, a domain or a role carries the
+   first customer's name.
 4. [03-backend-domain-and-ports](docs/03-backend-domain-and-ports.md) → [04-use-cases](docs/04-use-cases.md) → [05-repositories-and-persistence](docs/05-repositories-and-persistence.md)
    — build one vertical slice end to end.
 5. [06-api-contract-and-codegen](docs/06-api-contract-and-codegen.md) — stand the generator up as soon as the second
@@ -136,7 +140,7 @@ architecture they are applied to.
 | [05-repositories-and-persistence.md](docs/05-repositories-and-persistence.md) | Repository pattern, mappers, key shape, schema changes |
 | [06-api-contract-and-codegen.md](docs/06-api-contract-and-codegen.md) | Decorator metadata, extraction, generation, contract rules, compatibility |
 | [07-composition-and-entrypoints.md](docs/07-composition-and-entrypoints.md) | Composition root, dispatcher, workers, background work |
-| [08-multi-tenancy.md](docs/08-multi-tenancy.md) | Tenant scoping, key shapes, resolvers, isolation tests |
+| [08-branches-and-data-scoping.md](docs/08-branches-and-data-scoping.md) | Scoping data inside ONE customer: branches, key shapes, resolvers, isolation tests, and why the scope is in the key |
 | [09-frontend.md](docs/09-frontend.md) | SPA structure, generated client, state, forms, errors, design system |
 | [10-mobile.md](docs/10-mobile.md) | App structure, store, offline sync, media, background cost |
 | [11-testing-unit.md](docs/11-testing-unit.md) | Unit doctrine, fakes, builders, branch coverage, mutation discipline |
@@ -159,6 +163,7 @@ architecture they are applied to.
 | [28-supply-chain-and-build-inputs.md](docs/28-supply-chain-and-build-inputs.md) | Admitting a dependency, install scripts off, release age, advisories, pinned actions, digests and hashes, federated pipeline credentials |
 | [29-hardening-that-costs-nothing.md](docs/29-hardening-that-costs-nothing.md) | The settings that are already paid for: the flat-rate edge plan, identity, data, email, account, and what is NOT free |
 | [30-sign-in-branding-and-email.md](docs/30-sign-in-branding-and-email.md) | Styling the hosted sign-in page, putting it on your own domain, sending from your own domain, and the zero-dependency custom message trigger |
+| [31-multi-tenancy.md](docs/31-multi-tenancy.md) | SEPARATE CUSTOMERS: silo, pooled or store-per-tenant; which barriers survive a deliberate code change; the cloud limits that decide it; brand configuration, provisioning and offboarding |
 
 ---
 

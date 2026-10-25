@@ -73,7 +73,7 @@ function toEntity(row: OrderRow): OrderEntity { /* ... */ }
 6. **A subclass never reaches past the base class to the raw client.** If an operation
    cannot be expressed with the base primitives, extend the base class. A raw client
    call inside a subclass bypasses every guarantee the base class enforces — most
-   importantly tenancy ([08-multi-tenancy](08-multi-tenancy.md)).
+   importantly scoping ([08-branches-and-data-scoping](08-branches-and-data-scoping.md)).
 7. **Bytes go to object storage.** The row holds a key and metadata.
 8. **Parameterise every query.** No string concatenation of caller input into a query,
    in any store.

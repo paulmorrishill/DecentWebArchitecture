@@ -428,7 +428,7 @@ Rules:
 
 - The publisher is a **required** constructor parameter of any use case that publishes.
   Never optional, never optional-chained.
-- Every broadcast carries the tenant on the envelope. See [08-multi-tenancy](08-multi-tenancy.md).
+- Every broadcast carries its scope on the envelope. See [08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 6.1.
 - The infrastructure layer supplies the concrete broadcaster, including a no-op
   implementation for local development — and composition **logs which one it chose**.
 - A publish on a request path is awaited before the response returns, or handed to

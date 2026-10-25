@@ -84,7 +84,7 @@ Rules:
 - Claims come from the verified token, never from the body and never from an
   unverified header.
 - A header that lets a privileged caller act in another tenant is honoured **only after**
-  the role check that permits it. See [08-multi-tenancy](08-multi-tenancy.md).
+  the role check that permits it. See [08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 5.3.
 - **The clock is frozen for the request.** The entrypoint reads the real clock once and
   wraps the value, so every use case in the request agrees. A use case that genuinely
   needs time to advance — a long-running worker loop — takes the real clock instead, and

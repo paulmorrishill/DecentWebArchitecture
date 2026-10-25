@@ -6,6 +6,7 @@
 | **Aggregate** | A domain entity plus the things that only exist inside it. The unit a repository owns. |
 | **Application layer** | Use cases, ports, services, events. Knows the domain; never knows the infrastructure. |
 | **Backfill** | An idempotent, re-runnable script that brings existing rows to a new shape. |
+| **Branch** | A sub-unit **inside one customer** — a region, a chapter, a depot, a team. The scope most rows carry. One customer's top administrator legitimately sees every branch. |
 | **Broker facade** | A minimal authorization server a tool server runs in front of the real identity provider, because the provider has no dynamic client registration. It issues its own opaque tokens and stores the provider's. |
 | **Blast radius** | Every consumer of a symbol, type, table, or endpoint being changed. Mapped before a refactor. |
 | **Composition root** | The one place per deployable that reads configuration, constructs everything, and wires it. |
@@ -52,8 +53,9 @@
 | **Structural guard** | See guard test. |
 | **Tool server** | A process that turns the API's endpoints into tools a model can call. A protocol translator and a token courier; it holds no privilege of its own. |
 | **Tautological assertion** | An assertion satisfied by more than one outcome of the code under test. Proves nothing. |
-| **Tenant** | The isolation boundary for data. Most rows carry one; global data is a written-down exception. |
+| **Tenant** | Another **customer**: its own contract, brand, administrators, data controller and right to leave. Not a branch. The topology that separates tenants is a decision in its own right. |
 | **Test identifier** | A stable attribute on an element, the only permitted selector in end-to-end tests. |
+| **Topology (tenancy)** | Which shape separates customers: silo (a deployment each), pooled (a tenant attribute on every row) or store-per-tenant (a data store each). |
 | **Two-state control** | Anything that opens and closes, expands and collapses, enables and disables. Both directions are tested. |
 | **Use case** | One user-facing intent: one class, one execute method, one request type, one response type, one endpoint. |
 | **Vacuous test** | A test that stays green when the behaviour it names is broken. Worse than no test, because it reads as coverage. |

@@ -94,7 +94,7 @@ Rules:
 
 - **Global, not tenant-scoped.** The upload is anonymous, so there is no tenant to scope
   by, and the key is a server-made UUID. Write this down as the global-data exception
-  ([08-multi-tenancy](08-multi-tenancy.md)).
+  ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 3).
 - **Short lifetime.** Reference A: ten minutes. Long enough for a retry, short enough
   that the table holds almost nothing.
 - **The store's TTL is the only delete**, and TTL is lazy (DynamoDB can delete up to two
@@ -178,7 +178,7 @@ Rules:
 The tenant comes from the token, or from the tool server's own tenant argument, never from
 inside the staged JSON. A staged body that names another tenant cannot move a write there.
 Prove that with an end-to-end test (§ 7) — it is the cross-tenant test
-[08-multi-tenancy](08-multi-tenancy.md) requires, applied to the new path.
+[08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 8 requires, applied to the new path.
 
 ---
 
