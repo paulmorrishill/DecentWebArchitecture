@@ -15,6 +15,10 @@
   response; a mobile app uses the platform's secure storage. Pick one per client and
   document the refresh mechanism.
 - An unauthenticated response clears the credential and routes to sign-in.
+- The sign-in page the user reaches is the provider's hosted one, styled and on the
+  application's own domain. The emails that carry a reset code or an invitation are the
+  application's own. Both are
+  [30-sign-in-branding-and-email](30-sign-in-branding-and-email.md).
 
 ---
 

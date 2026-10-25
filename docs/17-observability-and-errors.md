@@ -141,7 +141,130 @@ missing to grep — only output that is quietly incomplete.
 
 ---
 
-## 6. The error taxonomy on the wire
+## 6. The root exception handler
+
+**Every entrypoint has exactly one, and it is the only place that turns an unexpected
+throw into a response.**
+
+One per entrypoint: the request dispatcher, each worker, each scheduled job, the local
+host, and the client (§ 9). Not one per use case, and not one per service.
+
+What it does, in this order:
+
+1. **Report**, with the site tag, the request id, and context that carries identifiers
+   only (§ 1).
+2. **Answer with the unexpected row of the taxonomy** (§ 8): a 500 whose body carries the
+   request id **and nothing else**.
+
+Rules:
+
+- **It is the designed path, not a fallback.** A use case is allowed to let an unforeseen
+  failure propagate, and the entrypoint is the one place that turns it into a response and
+  a report. See [07-composition-and-entrypoints](07-composition-and-entrypoints.md) § 3.
+- **Nothing below it catches broadly.** A catch inside a use case, a service or a
+  repository exists to recover one **named** condition, or to add information and rethrow.
+  A catch that swallows everything and returns a default is § 2 wearing a hat, and it hides
+  the one event the root handler exists to see.
+- **The exception message never leaves the process.** It can carry a key, a row, a path, a
+  query or a credential. The caller gets the request id; the detail is in the report.
+- **The request id is made at the edge**, written on every log line and every report of
+  that invocation, and returned in the body. Without it the handler is a dead end: the user
+  says "it broke" and nobody can find which one.
+- **Wrap it outside the per-invocation reporting scope**, so the report carries that
+  invocation's context and two concurrent invocations cannot mix theirs.
+- **Flush the reporter before returning, with a short bounded wait.** On a host that
+  freezes the process when the handler returns, an unflushed report is a lost report. Bound
+  the wait, so it cannot eat the invocation's budget.
+- **A worker's root handler also decides the message's fate:** a dead-letter destination
+  and a report, never a silent drop
+  ([07-composition-and-entrypoints](07-composition-and-entrypoints.md) § 4).
+- **Process-level handlers are a backstop, not the handler.** Register the runtime's
+  unhandled-rejection and uncaught-exception hooks, report, and **exit non-zero**. A
+  process that keeps serving after an uncaught exception serves from unknown state.
+
+**Test it.** A use case that throws must produce a 500, a request id in the body, a report
+carrying that same id, and **no** detail in the body. That is one test per entrypoint, and
+it is the test nobody writes until the first unreadable production incident.
+
+---
+
+## 7. Errors are not a channel for expected conditions
+
+**An exception means "this code did not anticipate this". Anything the code anticipated is
+a return value.**
+
+A failure the use case was written to produce is a declared error value on its own response
+contract ([03-backend-domain-and-ports](03-backend-domain-and-ports.md) § 3.1). It is not a
+throw.
+
+| The condition | Wrong | Right |
+|---|---|---|
+| The order the caller named does not exist | `throw new NotFoundError()` | `errors: ['OrderNotFound']`, 200 |
+| The name is already taken | `throw new ConflictError()` | `errors: ['NameAlreadyTaken']`, 200 |
+| Input fails a rule the use case checks | `throw new ValidationError()` | A declared value, plus the field that failed |
+| The order has already shipped | `throw new IllegalStateError()` | `errors: ['OrderAlreadyShipped']`, 200 |
+| The store is unreachable; a null nobody anticipated; a bug | `return null`, or an `UnknownError` value | **Throw.** Let it reach the root handler |
+
+Four reasons it matters:
+
+1. **The client cannot branch on it.** A thrown expected condition arrives as a 500 whose
+   body is a request id. The interface can only say "something went wrong".
+2. **It buries the real failures.** Every working-as-designed rejection becomes an error
+   report, and the reports stop being read.
+3. **It is not in the contract**, so the compiler cannot require a caller to handle it, and
+   adding another one breaks nobody loudly — which is the whole point of the declared set
+   ([06-api-contract-and-codegen](06-api-contract-and-codegen.md) § 7).
+4. **A throw unwinds.** It skips the rest of the function, including work that was going to
+   run after it.
+
+Do not convert in the other direction either. **No `UnknownError` value in a declared
+set:** it gives the caller nothing to do, and it moves a real defect onto the normal path,
+where nobody looks at it.
+
+**The smell:** one function throws a custom error type, and its only caller catches that
+type two frames up. That is a return value written as a throw. Make it a return value.
+
+### 7.1 The throws that are legitimate
+
+The rule is not "never throw". None of these is a domain outcome, and none of them has a
+contract to return through:
+
+- **A guard at a transport boundary, before any use case exists** — a body that is not the
+  declared shape, a route that does not exist, a role the caller does not hold. These become
+  the transport rows of § 8 (400, 401, 403, 404), not a 500, and they are not reported.
+- **A composition root refusing missing or contradictory configuration at startup.** It
+  must stop the deploy, loudly
+  ([07-composition-and-entrypoints](07-composition-and-entrypoints.md) § 1).
+- **An invariant assertion whose failure means the process cannot be trusted.**
+
+### 7.2 Translate a library's exception at the boundary
+
+A store, a client library or a parser signals by throwing, because it has no contract with
+your domain. **The infrastructure layer catches that exception and returns the declared
+failure.** A conditional-write refusal becomes `NameAlreadyTaken`; it does not reach the
+use case as the vendor's error type.
+
+Letting a vendor exception type travel into the application layer is a dependency-rule
+breach ([01-principles](01-principles.md)) as well as a taxonomy breach: the use case then
+knows which store it is talking to.
+
+### 7.3 The tests show which design you have
+
+```ts
+// The declared outcome. This is the shape of a correct test.
+expect(result.successful).toBe(false);
+expect(result.errors).toContain('OrderAlreadyShipped');
+```
+
+A test that asserts a **thrown type** for a condition the use case was written to produce is
+proof the condition is on the wrong channel. Fix the design, not the test.
+
+---
+
+## 8. The error taxonomy on the wire
+
+This table is § 6 and § 7 as one picture: which channel each outcome travels on, and which
+ones reach the reporter.
 
 | Kind | Status | Body | Reported? |
 |---|---|---|---|
@@ -179,7 +302,7 @@ Rules:
 
 ---
 
-## 7. Client-side
+## 9. Client-side
 
 - A global error boundary catches render failures, reports them, and shows a screen with
   a way forward.
@@ -191,7 +314,7 @@ Rules:
 
 ---
 
-## 8. Comments
+## 10. Comments
 
 - **Comments describe the code, not the change.** "Changed from X to Y", "now uses Z"
   means nothing to someone reading the file fresh in a year.
@@ -204,7 +327,7 @@ Rules:
 
 ---
 
-## 9. Judging a measured number
+## 11. Judging a measured number
 
 A runtime wildly out of proportion to the work is a **defect**, not a statistic to report
 beside a tick.

@@ -27,7 +27,7 @@ update.
 A language model's sense of wall-clock duration is a training artifact, detached from the
 machine it is running on. State **what** is being done, never how long it takes.
 
-This does not bar **judging a measured duration**. See [17-observability-and-errors](17-observability-and-errors.md) § 9.
+This does not bar **judging a measured duration**. See [17-observability-and-errors](17-observability-and-errors.md) § 11.
 
 ### 1.2 Never stop partway because a chunk is finished
 

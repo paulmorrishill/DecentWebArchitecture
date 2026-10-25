@@ -97,6 +97,9 @@ Every item here is configuration on the managed identity service.
   identically whether or not the address exists, so the platform cannot be used to find
   out who is a member. This is code, and it is free.
 - **Password policy by length, not by character classes.**
+- **Styling the hosted page and the emails is configuration too**, and the classic CSS
+  customisation sits on the free tier. See
+  [30-sign-in-branding-and-email](30-sign-in-branding-and-email.md).
 
 ---
 

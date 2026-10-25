@@ -145,7 +145,7 @@ architecture they are applied to.
 | [14-local-dev-and-simulators.md](docs/14-local-dev-and-simulators.md) | Running the whole stack with no cloud account |
 | [15-infrastructure-and-environments.md](docs/15-infrastructure-and-environments.md) | IaC layout, environments, naming, destructive-change review |
 | [16-ci-cd.md](docs/16-ci-cd.md) | Pipelines, gates, artifact checks, deploys, releases |
-| [17-observability-and-errors.md](docs/17-observability-and-errors.md) | Error taxonomy, reporting, no silent swallow, startup logging |
+| [17-observability-and-errors.md](docs/17-observability-and-errors.md) | Error taxonomy, the root exception handler, errors are not a control channel, no silent swallow, startup logging |
 | [18-security-and-privacy.md](docs/18-security-and-privacy.md) | Authorization model, personal-data gate, secrets, least privilege |
 | [19-performance-and-scale.md](docs/19-performance-and-scale.md) | Pagination, N+1, judging measured latency, retry and backoff |
 | [20-decision-records.md](docs/20-decision-records.md) | ADR process and template |
@@ -158,6 +158,7 @@ architecture they are applied to.
 | [27-tool-servers-and-mcp.md](docs/27-tool-servers-and-mcp.md) | The agent tool surface: the allowlist in the API, context budget, file and JSON intake, per-login tenant, the OAuth broker and its consent page |
 | [28-supply-chain-and-build-inputs.md](docs/28-supply-chain-and-build-inputs.md) | Admitting a dependency, install scripts off, release age, advisories, pinned actions, digests and hashes, federated pipeline credentials |
 | [29-hardening-that-costs-nothing.md](docs/29-hardening-that-costs-nothing.md) | The settings that are already paid for: the flat-rate edge plan, identity, data, email, account, and what is NOT free |
+| [30-sign-in-branding-and-email.md](docs/30-sign-in-branding-and-email.md) | Styling the hosted sign-in page, putting it on your own domain, sending from your own domain, and the zero-dependency custom message trigger |
 
 ---
 
