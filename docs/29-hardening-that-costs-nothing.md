@@ -37,7 +37,11 @@ month on production, and the staging equivalent tripped the cost kill switch.
 five rules: two scanner rules, one per-address rate rule, and two managed rule groups.
 That is the whole budget, and it covers the common cases.
 
-What the free tier takes away, and you must decide you can live with it:
+**Use the free tier for a site that serves files, and the first paid tier for anything that
+fronts an API.** The difference that decides it is the logs: on an API you will need them
+to find the false positive that is blocking a real client, and the free tier has none.
+
+What the free tier takes away:
 
 - **No access log and no firewall log.** You cannot see what was blocked, and anything
   downstream that reads those logs — an address blocker, for example — stops being fed.
@@ -198,8 +202,8 @@ list above was free:
 1. Turn on the free settings of § 1.2, § 3 and § 5 today. They need no design.
 2. Add the guard tests of § 6 in the same change, or the settings come off later.
 3. Add the DNS records of § 4.
-4. Measure the firewall bill before choosing a plan tier. The decision is "what do the
-   logs and the rule budget cost me", and the free tier answers it for a site that needs
-   five rules.
+4. Put the file-serving sites on the free tier and the API edge on the first paid tier
+   (§ 1.1). Measure the firewall bill first, so the saving is a number in the decision
+   record.
 5. Write the plan subscription step into the decision record, because the infrastructure
    code cannot do it.

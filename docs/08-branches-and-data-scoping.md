@@ -37,11 +37,17 @@ can see everything" is the thing that must **not** be true.
 
 **The two nest.** The full shape of a product sold to several customers is:
 
-```
-Platform  (the software)
- └── Tenant / organisation   — the customer        → 31-multi-tenancy
-      └── Branch              — their sub-unit     → this file
-           └── rows
+```mermaid
+flowchart TD
+    P["Platform<br/>the software"]
+    T["Tenant / organisation<br/>the customer<br/>→ 31-multi-tenancy"]
+    B["Branch<br/>their sub-unit<br/>→ this file"]
+    R["Rows"]
+    P --> T --> B --> R
+    classDef other fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
+    classDef here fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    class P,T,R other;
+    class B here;
 ```
 
 The mechanism below is the same mechanism at either level, so none of it is wasted. What
@@ -99,8 +105,10 @@ Two more consequences worth writing down before you meet them:
   default. **Re-read every one of those decisions before selling to a second customer**
   ([31-multi-tenancy](31-multi-tenancy.md) § 5): "shared across branches" silently becomes
   "shared across customers".
-- A user belongs to one branch, or holds membership of several. Decide which, early,
-  because it changes the key rules in § 7.
+- **A user belongs to exactly one branch.** Where somebody must work across branches, that
+  is a membership grant checked at the request boundary (§ 5.3), not a second home branch.
+  Keep it that way: the day a user's branch becomes movable, every table keyed on a bare
+  user identity starts colliding (§ 7).
 
 ---
 
@@ -252,18 +260,20 @@ hits the ownership guard — which surfaces as an unexpected failure, because th
 ownership violation is. The user is told nothing useful, and the one thing that would have
 helped — that a different name would work — is the one thing the system cannot say.
 
-For every new or changed scoped table, state in the pull request where the key comes from:
+**Use a generated identifier.** Everything else on this list is an exception that has to
+earn its place, and each one has a condition attached. State in the pull request which line
+the key follows:
 
 - [ ] **Generated identifier** — cannot collide. Note it and move on.
 - [ ] **User-chosen name or slug** — must be branch-prefixed at the repository boundary.
       Encode on write, decode on read, and keep the caller-facing identifier plain
       everywhere above the repository. Ship a test proving two branches can use the same
       name.
-- [ ] **User identity** — say deliberately whether that identity can repeat across branches.
-      If users belong to exactly one branch, a bare identity key does not collide *today*;
-      write that down rather than leaving it to inference, because the day membership
-      becomes movable it silently starts colliding. If the identity genuinely follows the
-      person across branches, the table is global and must not extend the scoped base class.
+- [ ] **User identity** — **prefix it anyway.** A bare identity key does not collide while
+      users belong to exactly one branch, and it starts colliding silently on the day that
+      changes. The prefix costs nothing now and removes a whole class of future defect. If
+      the identity genuinely follows the person across branches, the table is global and
+      must not extend the scoped base class.
 - [ ] **Externally-owned identifier** — shared across branches by definition. Must be
       prefixed.
 - [ ] **Composite key where a second attribute separates branches** — acceptable, listed
@@ -304,8 +314,9 @@ fixture — that is what stops the next table being added without a test.
 
 **2. An identity-key sentinel.** Walk the same fixtures, force every caller-identity field
 to one value, and fail when a key attribute comes back as that bare identity for a table not
-on the documented allowlist. **A failure is not a request to extend the allowlist** — decide
-first whether the table should be prefixed.
+on the documented allowlist. **A failure is a request to prefix the table, not to extend the
+allowlist.** Extend the allowlist only when the table is genuinely global, and write the
+reason on the entry.
 
 **3. An infrastructure guard.** Assert that every scoped table declared in code has its
 branch attribute and its branch index in the infrastructure definitions. Without the index,

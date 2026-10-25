@@ -22,13 +22,21 @@ per login", "Anonymous JSON staging for MCP tool calls".
 
 ## 1. The shape
 
-```
-model ──MCP──► tool server ──HTTPS + the USER'S token──► API ──► use case
-                    │                                      │
-                    │ tools built from the                 │ role gate
-                    │ contract manifest ∩ allowlist        │ tenant resolution
-                    │                                      │ tool-caller allowlist
-                    └─ no store of its own but the session row
+```mermaid
+flowchart LR
+    M["Model"]
+    TS["Tool server<br/>tools built from the contract manifest ∩ allowlist<br/>no store of its own but the session row<br/>NO PRIVILEGE"]
+    API["API<br/>role gate · tenant resolution · tool-caller allowlist<br/>DECIDES EVERYTHING"]
+    UC["Use case"]
+    M -- "MCP" --> TS
+    TS -- "HTTPS, carrying the USER'S token" --> API
+    API --> UC
+    classDef plain fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
+    classDef courier fill:#fff4e5,stroke:#b9770e,stroke-width:2px,color:#7e5109;
+    classDef gate fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    class M,UC plain;
+    class TS courier;
+    class API gate;
 ```
 
 - **One tool per endpoint**, built from the generated contract manifest

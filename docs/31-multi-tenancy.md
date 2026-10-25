@@ -10,11 +10,17 @@ a team. Those are **branches**, and they are
 constantly, and the confusion is expensive in one direction: a system built for branches and
 then sold to a second customer has to answer questions it never asked.
 
-```
-Platform  (the software, under a neutral name)
- └── Tenant / organisation   — the customer   ← this file
-      └── Branch              — their sub-unit → 08
-           └── rows
+```mermaid
+flowchart TD
+    P["Platform<br/>the software, under a neutral name"]
+    T["Tenant / organisation<br/>the customer<br/>← this file"]
+    B["Branch<br/>their sub-unit<br/>→ 08-branches-and-data-scoping"]
+    R["Rows"]
+    P --> T --> B --> R
+    classDef other fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
+    classDef here fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    class P,B,R other;
+    class T here;
 ```
 
 The one-line test: **if the person at the top may legitimately see all of it, it is
@@ -27,30 +33,29 @@ tenant level above them; its plan supplies the constraint analysis in § 3 and �
 
 ---
 
-## 1. Decide this before the first customer, not before the second
+## 1. Do these before the first customer
 
-Almost nothing here is a refactor. Most of it is a **topology** decision (§ 2), and the
-rest is configuration that must exist before any brand literal is typed (§ 8).
+Almost nothing here is a refactor. The topology (§ 2) is one call, and the rest is
+configuration that must exist before the first brand literal is typed (§ 8).
 
-The parts that are genuinely hard to change later:
+These are the one-way doors. Walk through one and the fix is a migration, not an edit:
 
-| One-way door | Why |
+| One-way door | What it costs later |
 |---|---|
-| Table and resource names with the first customer's brand in them | Renaming a deployed table means migrating its data |
+| A table or resource named after the first customer | Renaming a deployed table means migrating its data |
 | A globally unique key that should have been tenant-scoped | Two customers want the same slug on the day you find out |
-| Anything declared "shared" that is shared across customers | Each one is a cross-customer read, found one at a time |
+| Anything "shared" that is shared across customers | Each one is a cross-customer read, found one at a time |
 | An all-powerful top-level role | Splitting it later means auditing every endpoint that trusts it |
 | A mobile application identifier | Store identifiers cannot be changed after publication |
 
-**You can build for one customer and still not walk through those doors.** That is the
-cheap path, and § 11 is how.
+**Build for one customer, and walk through none of them.** § 11 is the list.
 
 ---
 
-## 2. The topology decision
+## 2. The topology: silo first, and pooled only with a barrier under it
 
-There are three shapes. Pick one explicitly and write a decision record
-([20-decision-records](20-decision-records.md)); do not arrive at one by accident.
+Three shapes exist. The verdict is at § 2.4; read § 2.1 to § 2.3 first, because the
+reasoning is what tells you when to leave the default.
 
 | | **A. Silo** — one deployment per customer | **B. Pooled** — one deployment, a tenant column | **C. Store-per-tenant** — one deployment, one data store each |
 |---|---|---|---|
@@ -65,48 +70,31 @@ There are three shapes. Pick one explicitly and write a decision record
 | Fits a key/value cloud store | Yes | Yes — the default there | Only with a store that has databases (§ 3) |
 | Fits a relational store | Yes | Yes | Yes — the normal answer there |
 
-**Silo is the smallest first step and the largest long-term bill.** It is close to what a
-single-customer system already is, so the first sale needs a deployment pipeline rather than
-a data-model change. It stops paying at the point where customers are small, numerous, or
-mostly idle.
-
-**Pooled is the cheapest to run and the only one where a code defect is a breach.**
-Everything in § 5 exists because of that sentence.
-
-**Store-per-tenant is the middle**, and it is the one that makes offboarding a non-event.
-
 ### 2.1 Barriers: what actually stops a cross-tenant read
 
-Every topology is a stack of barriers. They are not equal, and the difference is one
-question: **can the running application get past this barrier by changing its own code?**
+Every topology is a stack of barriers. They are not equal, and one question separates
+them: **can the running application get past this barrier by changing its own code?**
 
+```mermaid
+flowchart TD
+    REQ["A request that would read<br/>tenant B's data"]
+    B1["1 · CLAIM<br/>The edge and the gateway refuse a token that is not<br/>signed, current, and for one of our own clients"]
+    B2["2 · SCOPE<br/>The request scope is built from the claim.<br/>B is not it"]
+    B3["3 · FILTER<br/>The repository adds tenant = A to every read"]
+    B4["4 · PRINCIPAL<br/>The data service refuses: this role may touch<br/>only keys beginning A#"]
+    B5["5 · REACHABILITY<br/>B's data is in another account, on another network.<br/>No route, no principal"]
+    OUT(["Refused"])
+    REQ --> B1 --> B2 --> B3 --> B4 --> B5 --> OUT
+
+    classDef code fill:#fdecea,stroke:#c0392b,stroke-width:2px,color:#7b241c;
+    classDef infra fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    classDef plain fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
+    class B2,B3 code;
+    class B1,B4,B5 infra;
+    class REQ,OUT plain;
 ```
-  a request that would read tenant B's data
-                │
-                ▼
-  ┌─────────────────────────────────────────────┐
-  │ 1  CLAIM        the edge and the gateway     │   code?  NO  (infrastructure)
-  │                 refuse a token that is not   │
-  │                 signed, current, and for     │
-  │                 one of our own clients       │
-  ├─────────────────────────────────────────────┤
-  │ 2  SCOPE        the request scope is built   │   code?  YES
-  │                 from the claim; B is not it  │
-  ├─────────────────────────────────────────────┤
-  │ 3  FILTER       the repository adds          │   code?  YES
-  │                 tenant = A to every read     │
-  ├─────────────────────────────────────────────┤
-  │ 4  PRINCIPAL    the data service refuses:    │   code?  NO  (a policy on the
-  │                 THIS role may touch only     │              compute's own identity)
-  │                 keys beginning "A#"          │
-  ├─────────────────────────────────────────────┤
-  │ 5  REACHABILITY B's data is in another       │   code?  NO  (there is no route
-  │                 account, on another network  │              and no principal)
-  └─────────────────────────────────────────────┘
-                │
-                ▼
-             refused
-```
+
+Red is code the application can change. Green is enforced outside the application.
 
 | Barrier | Enforced by | Defeated by | Survives a developer deliberately editing the application? |
 |---|---|---|---|
@@ -122,22 +110,30 @@ question: **can the running application get past this barrier by changing its ow
 **If the running code can obtain the credential, the credential does not stop the running
 code.**
 
+```mermaid
+flowchart LR
+    subgraph PERM["PERMEABLE — the application holds the secret"]
+        direction TB
+        PA["Application<br/>holds the database login"]
+        PD[("Data store<br/>the password is valid,<br/>so the read is allowed")]
+        PA -- "connect as tenant B" --> PD
+    end
+    subgraph IMP["IMPERMEABLE — the application holds nothing"]
+        direction TB
+        IA["Application<br/>holds no credential"]
+        ID[("Data service<br/>checks the CALLER'S identity,<br/>refuses anything not A#")]
+        IA -- "read B#…" --> ID
+    end
+    PERM ~~~ IMP
+
+    classDef bad fill:#fdecea,stroke:#c0392b,stroke-width:2px,color:#7b241c;
+    classDef good fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    class PA,PD bad;
+    class IA,ID good;
 ```
-   PERMEABLE                                 IMPERMEABLE
-   ─────────                                 ───────────
-   ┌───────────────┐                         ┌───────────────┐
-   │  application  │  holds the secret       │  application  │  holds nothing
-   │               │──┐                      │               │──┐
-   └───────────────┘  │ "connect as          └───────────────┘  │ "read A#…"
-                      │  tenant B"                              │ "read B#…"
-                      ▼                                         ▼
-              ┌───────────────┐                         ┌───────────────┐
-              │  data store   │  password is            │  data service │  checks the CALLER'S
-              │               │  valid → allowed        │               │  identity → refuses
-              └───────────────┘                         └───────────────┘
-   one edited line reaches tenant B          no edit reaches tenant B; the policy is
-                                             not in the repository
-```
+
+On the left, one edited line reaches tenant B. On the right, no edit does, because the
+policy is not in the repository.
 
 - **A database username and password in the configuration is reachable by every line of
   code in that process.** A developer who edits one line to point at another tenant's
@@ -145,90 +141,99 @@ code.**
 - **Fetching a per-tenant credential at request time is the same thing, one step removed.**
   If the process can ask the secret store for any tenant's credential, the barrier is again
   "the code asked for the right one".
-- **The property to aim for: the compute's own identity cannot name the other tenant's data
-  at all.** Then the refusal comes from the data service rather than from your code, and the
-  only way through is to obtain a different identity — an infrastructure change, reviewed,
-  applied and logged, not an edit.
+- **Make the compute's own identity unable to name the other tenant's data.** Then the
+  refusal comes from the data service rather than from your code, and the only way through
+  is to obtain a different identity — an infrastructure change, reviewed, applied and
+  logged, not an edit.
 
-Ways to get that property, cheapest first:
+Use the cheapest of these that your key shape allows:
 
 1. **Scope the compute's role by key prefix** — a condition on the leading key value, so the
    role may address only items whose key begins with the tenant. One policy. No new
-   infrastructure.
+   infrastructure. **This is the one to reach for first.**
 2. **Scope object storage by prefix** in the same way, so files are separated by a policy and
    not only by a path ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 6.2).
 3. **Derive a scoped-down session from the caller's own verified token**, so the credentials
    that exist during that request cannot address another tenant at all.
-4. **A role per tenant**, assumed from the verified claim.
+4. **A role per tenant**, assumed from the verified claim. Take this when the data service
+   has no key-prefix condition.
 5. **A separate account per tenant** (silo), where there is nothing to scope because there is
    nothing shared.
 
-**The honest caveat:** a leading-key condition only works when the tenant is the leading part
-of the key — which is exactly what
+**The caveat that decides whether you get any of this:** a leading-key condition works only
+when the tenant is the leading part of the key — which is exactly what
 [08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 7 already requires. Get the
-key shape wrong and this barrier is not available to you at all. That is one more reason the
-key shape is a day-one decision.
+key shape wrong and this barrier is not available at all. That is why the key shape is fixed
+on day one and not revisited.
 
-### 2.3 The swiss cheese model: at least one slice that is not code
+### 2.3 The swiss cheese model: never ship a stack that is all code
 
-Each barrier is a slice with a known hole. A breach needs the holes to line up.
+Each barrier is a slice with a known hole. A breach needs the holes to line up. What
+matters is which slices are code, because code holes move on every commit.
 
+```mermaid
+flowchart TD
+    R["A request that would read<br/>another tenant's data"]
+
+    subgraph INFRA1["Not code — a reviewed, applied change moves these"]
+        S1["Slice 1 · Claim checked at the edge and the gateway<br/>hole: an endpoint that is not behind them"]
+    end
+    subgraph CODE["Code — these holes move on every commit"]
+        S2["Slice 2 · Scope resolved from the claim<br/>hole: no resolver on an anonymous path"]
+        S3["Slice 3 · Repository scoping<br/>hole: a raw client call, or a &quot;global&quot; table"]
+    end
+    subgraph INFRA2["Not code — a reviewed, applied change moves these"]
+        S4["Slice 4 · Principal scoped at the data service<br/>hole: wrong key shape, or a policy left wide"]
+        S5["Slice 5 · Separate account or network<br/>hole: none, while they are separate"]
+    end
+
+    R --> S1 --> S2 --> S3 --> S4 --> S5 --> OUT(["Blocked"])
+
+    classDef code fill:#fdecea,stroke:#c0392b,stroke-width:2px,color:#7b241c;
+    classDef infra fill:#e8f6ec,stroke:#1e8449,stroke-width:2px,color:#145a32;
+    classDef plain fill:#eef2f7,stroke:#5b6b7f,color:#24323f;
+    class S2,S3 code;
+    class S1,S4,S5 infra;
+    class R,OUT plain;
 ```
-      a request that would read another tenant's data
-                          │
-   ══════════════════════ ▼ ══════════════════════
-   slice 1   claim checked at the edge          ○ hole: an endpoint not behind the gateway
-   ─────────────────────────────────────────────────────────────────  CODE
-   slice 2   scope resolved from the claim           ○ hole: no resolver on an anonymous path
-   ─────────────────────────────────────────────────────────────────  CODE
-   slice 3   repository scoping              ○ hole: a raw client call, or a "global" table
-   ─────────────────────────────────────────────────────────────────  CODE
-   slice 4   principal scoped at the data service     ○ hole: wrong key shape, or a wide policy
-   ─────────────────────────────────────────────────────────  NOT CODE (infrastructure)
-   slice 5   separate account or network                        ○ hole: none, while they are separate
-   ─────────────────────────────────────────────────────────  NOT CODE (infrastructure)
-                          │
-                          ▼
-                       blocked
-```
 
-The whole recommendation is in which slices are which:
-
-- **Slices 1 to 3 are code. Their holes move on every commit**, and one commit can open one.
-  A design whose slices are *all* code is one merged pull request away from alignment, and
-  the guard tests in § 12 are the only thing watching.
-- **Slices 4 and 5 are not code. Their holes move only when the infrastructure changes** —
-  a separate file, a separate review, a separate approval, an applied plan and an audit
+- **Slices 2 and 3 are code.** One merged pull request can open a hole in either, and the
+  guard tests of § 12 are the only thing watching.
+- **Slices 1, 4 and 5 are not code.** Their holes move only when the infrastructure changes
+  — a separate file, a separate review, a separate approval, an applied plan and an audit
   record ([15-infrastructure-and-environments](15-infrastructure-and-environments.md)).
+- **A stack that is all code is one merged pull request from a breach. Do not ship one.**
+  Slice 1 is free and you should already have it
+  ([18-security-and-privacy](18-security-and-privacy.md) § 1). Slice 4 is one policy.
 
 > **With slice 4 or slice 5 in place, a developer who deliberately edits the application to
 > read another tenant's data does not succeed by editing the application.** The data service
-> refuses the principal. To succeed they must change the infrastructure, which is a reviewed,
-> applied and audited change — or obtain a different identity. That is the difference between
-> "we trust the code" and "the code is not trusted."
+> refuses the principal. To succeed they must change the infrastructure — a reviewed, applied
+> and audited change — or obtain a different identity. That is the difference between "we
+> trust the code" and "the code is not trusted."
 
-State the limit of that claim too, or it is not worth making: **someone who can change the
-infrastructure and get it applied can still do it.** The control there is that the change is
-visible, reviewed and recorded, and that the deploy role that can make it is not the role the
-application runs as ([28-supply-chain-and-build-inputs](28-supply-chain-and-build-inputs.md) § 7).
+The limit of that claim, stated so the claim stays worth making: **someone who can change
+the infrastructure and get it applied can still do it.** Keep that change visible, reviewed
+and recorded, and keep the deploy role that can make it separate from the role the
+application runs as
+([28-supply-chain-and-build-inputs](28-supply-chain-and-build-inputs.md) § 7).
 
-### 2.4 Which of these is a low-risk choice
+### 2.4 The verdict
 
-Take the option whose failure mode you can state in one sentence:
-
-- **Silo — low risk.** Nothing new can leak, because there is nothing shared to leak
-  through. Its costs are money and release effort, both of which are visible and neither of
-  which is a breach. **This is the default recommendation for the first few customers.**
-- **Pooled — the risk is real, and it depends on what you build under it.** Every endpoint,
-  every query and every "global" decision is load-bearing for isolation, and all of them are
-  code (§ 2.3, slices 1 to 3). It is a sound choice **with a non-code slice underneath it** —
-  the compute's own identity scoped by key prefix (§ 2.2) — plus the guard tests of § 12 and
-  § 5.1 worked through item by item. Pooled with code-only barriers is the one combination
-  to avoid.
-- **Store-per-tenant on a relational database — low risk, well-trodden** (§ 4). Reference B
-  has run it in production for years.
-- **Store-per-tenant through a protocol adapter on a key/value store — do not plan around
-  it yet** (§ 3.1). It is attractive, and it is young.
+- **Start with silo.** Nothing new can leak, because there is nothing shared to leak
+  through. Its costs — money and release effort — are visible, and neither of them is a
+  breach. Stay there until the per-customer fixed cost, or the per-customer release
+  expectation, actually hurts.
+- **Move to pooled when idle customers get expensive, and only with slice 4 underneath it.**
+  Pooled with code-only barriers is the one combination to refuse: every endpoint, every
+  query and every "global" call becomes load-bearing for isolation, and all of them are
+  code. Pooled with the compute's identity scoped by key prefix (§ 2.2), the guard tests of
+  § 12, and § 5.1 worked through item by item is sound.
+- **On a relational store, prefer store-per-tenant over pooled.** It is the normal answer
+  there, it makes offboarding a database hand-over, and Reference B has run it in production
+  for years (§ 4).
+- **Do not put a protocol-adapter store-per-tenant in production yet** (§ 3.1). Run it as
+  the local and test store, where a gap costs nothing.
 
 ---
 
@@ -265,8 +270,8 @@ speaks the same protocol and stores the data in a relational database — gives 
 without changing a line of repository code: only the endpoint and the credentials differ per
 customer, and the table names stay as they are.
 
-State the trade honestly in the decision record, because it moves the whole operational
-model:
+**Do not put this in production yet. Run it as the local and test store.** The trade, in
+full, because it moves the whole operational model:
 
 - **Gained:** physical per-customer isolation with no table rename; a customer can hold
   their own database, even on their own infrastructure; offboarding is a database hand-over;
@@ -276,10 +281,11 @@ model:
   gateway; static credentials in a secret store instead of a role; per-customer fixed cost
   even while idle; the managed store's own recovery and export features replaced by the
   database's.
-- **Check before depending on it:** whether one such server gives each account its own
-  table namespace, and how far its feature coverage really goes. Pilot it as the **local and
-  test** store first, where a gap costs nothing and where it may already be better than the
-  usual lightweight emulator ([14-local-dev-and-simulators](14-local-dev-and-simulators.md)).
+- **Where it earns its place today:** as the local and test store, in place of the usual
+  lightweight emulator, where it runs the same code path as production and a gap costs
+  nothing ([14-local-dev-and-simulators](14-local-dev-and-simulators.md)). Before anything
+  else depends on it, confirm that one such server gives each account its own table
+  namespace, and how far its feature coverage really goes.
 
 ---
 
@@ -399,9 +405,12 @@ a hole in it; that one is not, and it is a policy rather than a project.
 
 This is the single largest defect class, and every item is found separately, by hand.
 
-Go through every piece of data that is deliberately global
-([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 3) and decide again.
-Shapes that were right across one customer's branches and are wrong across customers:
+**Scope every one of them to the tenant.** Keep a global one only where the data is the
+platform's own and no customer can write it — a country list, a unit table, a public
+reference set — and write that reason beside it.
+
+These are the shapes that were right across one customer's branches and are wrong across
+customers ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 3):
 
 | Shape | What it becomes |
 |---|---|
@@ -412,7 +421,7 @@ Shapes that were right across one customer's branches and are wrong across custo
 | A global tag or category namespace | A collision, and a list of another customer's terms |
 | A shared reference data set | Usually still correct — write down why |
 
-Each one is either scoped to the tenant, or kept global **with a written reason**.
+If you cannot write the reason in one sentence, it is not global. Scope it.
 
 ### 5.2 Keys that were globally unique stop being so
 
@@ -465,8 +474,10 @@ design somewhere:
 | Shared request, concurrency and throughput quotas | One busy customer degrades the others |
 | A shared table quota (§ 3) | Any per-customer table is multiplied |
 
-**Count these before choosing pooled**, and write the numbers in the decision record. They
-are the limits that do not show up in a prototype with two customers.
+**Count these before you commit to pooled, and put the numbers in the decision record.**
+They are the limits that do not show up in a prototype with two customers, and each one is
+a ceiling on how many customers the deployment can hold — a different ceiling from the
+data.
 
 ---
 
@@ -521,7 +532,7 @@ exists in source outside that object's files.**
 - **A branch may override a small, listed set** of those values — a join link, an imprint, a
   hero image, a sender name. Everything else inherits. Keep that list short and explicit.
 
-### 8.1 Delivery: decide per consumer, not once
+### 8.1 Delivery: one mechanism per consumer
 
 | Consumer | How it gets the configuration |
 |---|---|
@@ -539,18 +550,17 @@ serves the wrong customer's name instead of refusing to start.
 
 ## 9. The mobile application
 
-Two shapes, and the choice is a store decision as much as a technical one:
+**Build one neutral application that picks the customer.** Treat a per-customer listing as
+a paid option, taken only when a customer requires its own.
 
-- **One neutral application that picks the customer.** Discovery before sign-in — a code, or
+- **One neutral application that picks the customer** — the default. Discovery before sign-in — a code, or
   the email domain, resolved to that customer's API host and identity client. The customer
   becomes part of the local storage namespace. One listing, one review, one set of signing
   keys. A neutral listing also avoids a store rejecting an application that looks like it
   impersonates an organisation.
-- **One application per customer.** Needed when a customer requires their own listing.
-  Each one costs a store review, its own signing keys, its own metadata, and its own release
-  process.
-
-Default to the neutral application, and treat a per-customer listing as a paid option.
+- **One application per customer** — only when a customer requires their own listing. Each
+  one costs a store review, its own signing keys, its own metadata, and its own release
+  process, on every release, forever.
 
 ---
 
@@ -560,8 +570,10 @@ Default to the neutral application, and treat a per-customer listing as a paid o
 the identity, verify the mail identity, seed the defaults, record the customer in the
 registry. From a pool where that takes too long to do during sign-up (§ 4.4).
 
-**Suspend:** non-payment, or a customer request. Decide what suspended means — read-only,
-sign-in refused, or data hidden — and make it one flag with one meaning.
+**Suspend:** non-payment, or a customer request. **Suspended means read-only, on one flag,
+with the data untouched.** Sign-in still works, so the customer can see their data, pay, and
+export. Hiding the data or refusing sign-in turns a billing problem into a support incident
+and an accusation of holding data hostage.
 
 **Export:** the customer is entitled to their data. In store-per-tenant this is a database
 hand-over. In pooled it is a filtered export, and **the filter is the same code path that
@@ -575,8 +587,8 @@ built, not when the request arrives, and test it.
 
 ## 11. The cheap path to being ready
 
-You do not need to choose a topology before the first customer. You do need to avoid the
-one-way doors in § 1. In order:
+You do not need the topology before the first customer. You do need to avoid the one-way
+doors in § 1. Do these, in order, while there is still only one customer:
 
 1. **Build the brand configuration object now** (§ 8), with one customer in it and a
    byte-identical test. It is topology-independent and it is the expensive part to retrofit.

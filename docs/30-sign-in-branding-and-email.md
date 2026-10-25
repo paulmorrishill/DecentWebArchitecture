@@ -21,9 +21,12 @@ the provider; every trap below exists in some form on all of them.
 
 ---
 
-## 1. Decide these three before you write anything
+## 1. The three answers, already decided
 
-| Question | Answer that costs least |
+Do not re-derive these per project. Deviate only with a reason written in the decision
+record ([20-decision-records](20-decision-records.md)).
+
+| Question | The answer |
 |---|---|
 | Style the sign-in page, or build your own? | Style the hosted page. A hand-built sign-in page means the application handles passwords, which is the thing the identity service exists to avoid ([18-security-and-privacy](18-security-and-privacy.md) § 1). |
 | Change the email text, or send the email yourself? | Change the text (§ 4). Sending it yourself needs a cryptography library and makes a failure mean **no email at all** (§ 6). |

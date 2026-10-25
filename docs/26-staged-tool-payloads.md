@@ -21,19 +21,22 @@ is [27-tool-servers-and-mcp](27-tool-servers-and-mcp.md).
 
 ## 1. The flow
 
-```
-agent ──writes──► script ──POST /tool-payloads/stage {payload}──► API (anonymous)
-                                │                                   │ size check
-                                │◄──── { stagedPayloadId, expiresAt }┤ store row, TTL
-                                ▼
-agent ──tool call { stagedPayloadId }──► tool server ──POST /orders/import { stagedPayloadId }
-                                                          + the tool server's token
-                                                                    │
-                                              dispatcher: caller is tool server?
-                                                yes → body := staged JSON
-                                                no  → body unchanged
-                                                                    │
-                                              tenant resolution, role gate, use case
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant S as Script<br/>(no token)
+    participant T as Tool server<br/>(holds the login)
+    participant P as API
+    A->>S: writes the script
+    S->>P: POST /tool-payloads/stage { payload }<br/>no Authorization header
+    Note right of P: size check<br/>store the row with a TTL
+    P-->>S: { stagedPayloadId, expiresAt }
+    S-->>A: the id
+    A->>T: tool call { stagedPayloadId }
+    T->>P: POST /orders/import { stagedPayloadId }<br/>+ the tool server's token
+    Note right of P: caller is the tool server?<br/>yes -> body := the staged JSON<br/>no -> body unchanged
+    Note right of P: THEN tenant resolution,<br/>role gate, use case
 ```
 
 The model writes a short script and one id. The script never needs a token, because the
