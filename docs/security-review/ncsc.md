@@ -1,0 +1,86 @@
+# NCSC checklist
+
+Two UK publications in one checklist: the **NCSC Cloud Security Principles** (14 principles, published November 2018, last reviewed by NCSC on 7 June 2023), and the **Software Security Code of Practice** (DSIT, co-designed with NCSC; published 7 May 2025, page last updated 15 January 2026; 4 themes, 14 principles). Both are the current versions as of November 2026. How to run the review is [33-security-review](../33-security-review.md).
+
+**This checklist is optional.** Run it when one of these is true:
+
+- **You sell to a UK public-sector buyer.** The Cloud Security Principles are what a public-sector buyer assesses a SaaS against, including through G-Cloud. Expect the questionnaire to follow the principle numbers.
+- **A customer asks for the Software Security Code of Practice self-assessment.** The Code is voluntary, but NCSC publishes a self-assessment form, and buyers are starting to ask for it.
+
+Cyber Essentials v3.3 leaves bespoke application code out of its scope and points to the Code of Practice for it ([cyber-essentials](cyber-essentials.md) CE-SC-6). So a team with Cyber Essentials has already been told to look here.
+
+- **Repo rule.** ✅ a rule here, if followed, meets the item. 🟡 a rule meets part of it. ❌ no rule. ➖ the architecture as written has no such surface. 🏢 an organisational, people or physical control that an architecture cannot cover. **A tick is not a pass.** It says where to look; the reviewer still checks.
+- **Tracker.** [ncsc.csv](ncsc.csv) has the same rows with empty result columns.
+- **Wording.** Items are paraphrased, and only the publications' identifiers and titles are used. The NCSC and GOV.UK pages are the authority. Principles 2, 5, 6, 13 and 14 have numbered sub-principles; the others do not, so they are one row each.
+
+---
+
+## What a SaaS team gets wrong
+
+- **The Cloud Security Principles apply to you, not only to your cloud provider.** You inherit 2.2 (data centre security) and part of 2.5 from the provider: cite its statement against the same principles. Everything above the provider's line is your answer.
+- **"Where is our data?" has more than one answer.** The cloud region is one. The identity provider, the error tracker, the mail service and the support desk each hold some of it, and each can sit in another jurisdiction. Principle 2.1 wants all of them, and nothing here lists them.
+- **Internal logs are not customer audit information.** Principle 13 asks what the *customer* can see: who signed in, who changed what, and an alert when something is wrong. The platform audit log of [31](../31-multi-tenancy.md) § 4.1 is yours, not theirs.
+- **A vulnerability disclosure process is a Code requirement, not a nicety** (SSCOP 3.2). It is the cheapest row in this checklist to close: a policy page and a `/.well-known/security.txt`.
+- **The Code names a Senior Responsible Owner at the top of the organisation as accountable.** The self-assessment is signed there, not by the team lead. Name the person before the form arrives.
+- **A SaaS still has things that reach end of support.** An old mobile app build, an API version, a self-hosted agent. SSCOP 4.2 wants a year's notice before any of them stops being supported.
+- **Multi-factor authentication for administrators is expected** under principles 10 and 12. This set offers it and does not require it ([33](../33-security-review.md) § 6.1, gap 3).
+
+## Coverage
+
+| | ✅ Covered | 🟡 Partial | ❌ Gap | 🏢 Org | Total |
+|---|---|---|---|---|---|
+| Cloud Security Principles | 5 | 10 | 6 | 3 | 24 |
+| Software Security Code of Practice | 3 | 6 | 3 | 2 | 14 |
+| **All** | 8 | 16 | 9 | 5 | 38 |
+
+## Cloud Security Principles
+
+| ID | Item | Repo rule | Rules | Note |
+|---|---|---|---|---|
+| NCSC-CSP-1 | Data in transit protection: user data crossing networks is protected against eavesdropping and tampering | 🟡 Partial | [29 §1.2](../29-hardening-that-costs-nothing.md#12-the-rest-of-the-edge-all-free), [18 §1](../18-security-and-privacy.md#1-authentication) | TLS minimum, HTTPS redirect, managed certificate at the edge; backend traffic not required to use TLS. |
+| NCSC-CSP-2.1 | Physical location and legal jurisdiction: know where data is stored and processed, and which laws reach it | ❌ Gap | [20 §2](../20-decision-records.md#2-when-to-write-one) | No rule to record regions or every processor's jurisdiction; an ADR would fit. |
+| NCSC-CSP-2.2 | Data centre security: sites holding data are physically protected | 🏢 Org |  | Inherited from the cloud provider; cite its own statement against the principles. |
+| NCSC-CSP-2.3 | Data encryption: data at rest is protected from anyone with physical access to the infrastructure | ✅ Covered | [29 §3](../29-hardening-that-costs-nothing.md#3-data), [29 §7](../29-hardening-that-costs-nothing.md#7-what-is-not-free) | Default encryption on every store; customer-managed keys for tokens and credentials. No guard test pins it. |
+| NCSC-CSP-2.4 | Data sanitisation and equipment disposal: data is removed when it leaves the service, and media disposed of securely | 🟡 Partial | [31 R30](../31-multi-tenancy.md#lifecycle), [31 §8](../31-multi-tenancy.md#8-lifecycle-r26-to-r30) | Deletion list covers stores, prefixes and backups; media disposal inherited; no per-customer key to destroy. |
+| NCSC-CSP-2.5 | Physical resilience and availability: the service meets its availability commitments through failures | 🟡 Partial | [29 §3](../29-hardening-that-costs-nothing.md#3-data), [29 §7](../29-hardening-that-costs-nothing.md#7-what-is-not-free), [15 §4](../15-infrastructure-and-environments.md#4-reviewing-a-change) | Deletion protection and stateful-destroy review; recovery optional and paid; no restore test or stated SLA. |
+| NCSC-CSP-3 | Separation between customers: one customer cannot reach or affect another's service or data | ✅ Covered | [31 §1](../31-multi-tenancy.md#1-the-rules), [31 §2.2](../31-multi-tenancy.md#22-how-to-satisfy-r12), [31 §9](../31-multi-tenancy.md#9-tests), [08 §8](../08-branches-and-data-scoping.md#8-tests-that-enforce-isolation) | Silo first, a non-code barrier on every deployment, isolation and barrier tests against the real store. |
+| NCSC-CSP-4 | Governance framework: a framework that coordinates and directs the management of the service and its information | 🏢 Org | [iso-27001](iso-27001.md) | Management system; the ISO 27001 checklist covers it. |
+| NCSC-CSP-5.1 | Vulnerability management: weaknesses in the provider's components are found, prioritised and fixed | 🟡 Partial | [28 §3](../28-supply-chain-and-build-inputs.md#3-a-new-version-waits), [28 §4](../28-supply-chain-and-build-inputs.md#4-advisories-and-where-a-package-came-from), [18 §8](../18-security-and-privacy.md#8-dependencies) | New advisories blocked; no fix deadline for existing ones; end-of-life runtimes not retired. |
+| NCSC-CSP-5.2 | Protective monitoring: attacks, misuse and malfunction are detected and acted on quickly | ❌ Gap | [17 §1](../17-observability-and-errors.md#1-one-reporter-everywhere), [29 §1.1](../29-hardening-that-costs-nothing.md#11-the-flat-rate-plan-is-the-big-one) | Errors reported and firewall logs on the paid tier; no security events logged or watched. |
+| NCSC-CSP-5.3 | Incident management: planned incident response, and customers told when their data is affected | ❌ Gap |  | No runbook, owner or customer notification rule ([33 §7](../33-security-review.md#7-other-things-worth-doing)). |
+| NCSC-CSP-5.4 | Configuration and change management: components tracked, changes assessed, unauthorised changes caught | 🟡 Partial | [15 §4](../15-infrastructure-and-environments.md#4-reviewing-a-change), [15 §5](../15-infrastructure-and-environments.md#5-applying), [29 §6](../29-hardening-that-costs-nothing.md#6-the-tests-that-keep-them-on) | Infrastructure as code, plan reviewed, pipeline-only applies, guard tests; no drift detection or account trail. |
+| NCSC-CSP-6.1 | People and security culture: staff access limited and staff screened to suit their role | 🏢 Org |  | Screening and culture; not in repo. |
+| NCSC-CSP-6.2 | Technical controls for service administration: staff access to customer data logged, monitored and limited | 🟡 Partial | [31 R20](../31-multi-tenancy.md#data), [31 §4.3](../31-multi-tenancy.md#43-the-cross-tenant-override-and-the-test-that-contains-it-r21), [18 §7](../18-security-and-privacy.md#7-operating-on-production) | Audited operator role, one cross-tenant override, data-blind production; no alert on staff access. |
+| NCSC-CSP-7 | Secure development: the service is designed, built and deployed to reduce security threats | ✅ Covered | [33 §3](../33-security-review.md#3-threat-model-first), [16 §3](../16-ci-cd.md#3-what-ci-actually-checks), [18](../18-security-and-privacy.md), [28](../28-supply-chain-and-build-inputs.md) | Threat model, gated CI, ASVS review; no SAST or secret scanning yet (33 §4). |
+| NCSC-CSP-8 | Supply chain security: suppliers and their supply chains support the principles the service claims | 🟡 Partial | [28 §1](../28-supply-chain-and-build-inputs.md#1-no-new-direct-dependency-without-a-named-decision), [28 §6](../28-supply-chain-and-build-inputs.md#6-container-and-binary-inputs-are-pinned-by-digest-or-hash) | Software inputs controlled; no list of suppliers holding customer data, no supplier assurance. |
+| NCSC-CSP-9 | Secure user management: customers get tools to control who can access the service and their data | 🟡 Partial | [18 §2](../18-security-and-privacy.md#2-authorization), [29 §2](../29-hardening-that-costs-nothing.md#2-identity), [31 R20](../31-multi-tenancy.md#data) | Role gate, tenant administrator, admin-only accounts; no time-bounded privilege or removal of unused access. |
+| NCSC-CSP-10 | Identity and authentication: every access to a service interface is from a verified identity | 🟡 Partial | [18 §1](../18-security-and-privacy.md#1-authentication), [29 §2](../29-hardening-that-costs-nothing.md#2-identity), [31 R15](../31-multi-tenancy.md#barriers) | Managed identity, token verified at edge and gateway; MFA offered not required; no customer SSO rule. |
+| NCSC-CSP-11 | External interface protection: every external or less-trusted interface is identified and defended | ✅ Covered | [29 §1](../29-hardening-that-costs-nothing.md#1-the-edge), [18 §2](../18-security-and-privacy.md#2-authorization), [18 §4](../18-security-and-privacy.md#4-input-handling), [18 §9](../18-security-and-privacy.md#9-things-that-quietly-become-security-surfaces) | Edge firewall, anonymous endpoints explicit, rate limits, signed webhooks, tool-server allowlist. |
+| NCSC-CSP-12 | Secure service administration: the systems used to administer the service are highly protected | 🟡 Partial | [15 §5](../15-infrastructure-and-environments.md#5-applying), [29 §5](../29-hardening-that-costs-nothing.md#5-the-account-and-the-pipeline), [28 §7](../28-supply-chain-and-build-inputs.md#7-the-pipeline-holds-no-long-lived-credential) | Pipeline-only changes, federated credentials, account per environment; no MFA or admin device rule. |
+| NCSC-CSP-13.1 | Audit information: customers get the audit records to investigate use of their service and data | ❌ Gap | [31 §4.1](../31-multi-tenancy.md#41-two-kinds-of-database) | Platform audit log is internal; no customer-visible sign-in or change history. |
+| NCSC-CSP-13.2 | Security alerts: customers are alerted promptly, through an automated channel, to attacks or compromise | ❌ Gap |  | No customer security alert of any kind. |
+| NCSC-CSP-14.1 | Security by design and by default: the service resists common attacks out of the box; customer duties are stated | ✅ Covered | [29 §2](../29-hardening-that-costs-nothing.md#2-identity), [18 §3](../18-security-and-privacy.md#3-personal-data), [06 §6.3](../06-api-contract-and-codegen.md#63-therefore-generate-at-deploy-time-and-fail-closed) | No open sign-up, required privacy flag, fail-closed route table; customer duties still to write. |
+| NCSC-CSP-14.2 | Help customers meet their security responsibilities: visibility of their resources and settings | ❌ Gap |  | No customer-facing security guide or settings view. |
+
+## Software Security Code of Practice
+
+| ID | Item | Repo rule | Rules | Note |
+|---|---|---|---|---|
+| NCSC-SSCOP-1.1 | Follow an established secure development framework | 🟡 Partial | [33 §1](../33-security-review.md#1-the-rules), [asvs-5.0](asvs-5.0.md) | ASVS level chosen by ADR and this set; no mapping to a recognised SDLC framework. |
+| NCSC-SSCOP-1.2 | Know the components in the software and assess the risk of third-party ones | 🟡 Partial | [28 §1](../28-supply-chain-and-build-inputs.md#1-no-new-direct-dependency-without-a-named-decision), [28 §4](../28-supply-chain-and-build-inputs.md#4-advisories-and-where-a-package-came-from) | Every direct dependency a named decision; no SBOM per release (33 §4). |
+| NCSC-SSCOP-1.3 | A defined test process for software and updates before release | ✅ Covered | [16 §3](../16-ci-cd.md#3-what-ci-actually-checks), [16 §4.3](../16-ci-cd.md#43-production), [33 §1.1](../33-security-review.md#11-when-to-review) | Gated CI, green end-to-end before release, security review triggers. |
+| NCSC-SSCOP-1.4 | Secure by design and secure by default through the whole lifecycle | ✅ Covered | [33 §3](../33-security-review.md#3-threat-model-first), [18](../18-security-and-privacy.md), [29](../29-hardening-that-costs-nothing.md) | Threat model kept with the code; secure defaults with guard tests. |
+| NCSC-SSCOP-2.1 | Protect the build environment from unauthorised access | 🟡 Partial | [28 §2](../28-supply-chain-and-build-inputs.md#2-install-scripts-are-off-everywhere), [28 §5](../28-supply-chain-and-build-inputs.md#5-pipeline-actions-are-pinned-to-a-commit), [28 §7](../28-supply-chain-and-build-inputs.md#7-the-pipeline-holds-no-long-lived-credential), [16 §2.4](../16-ci-cd.md#24-self-hosted-runners) | Pinned actions, no install scripts, federated credentials; no MFA on the git host, no runner hardening. |
+| NCSC-SSCOP-2.2 | Control and log changes to the build environment | 🟡 Partial | [28 §5](../28-supply-chain-and-build-inputs.md#5-pipeline-actions-are-pinned-to-a-commit), [16 §2.1](../16-ci-cd.md#21-which-gate-actually-gates) | Workflows are code, reviewed and pinned; host and runner settings changed outside review, unlogged. |
+| NCSC-SSCOP-3.1 | Distribute software to customers securely | ✅ Covered | [16 §4](../16-ci-cd.md#4-deployment), [29 §1.2](../29-hardening-that-costs-nothing.md#12-the-rest-of-the-edge-all-free), [32 §5](../32-mobile-delivery.md#5-credentials-and-signing) | Pipeline deploys over TLS; mobile builds signed, keys held by the build service. |
+| NCSC-SSCOP-3.2 | Have and publish a vulnerability disclosure process | ❌ Gap |  | No disclosure policy or security.txt ([33 §7](../33-security-review.md#7-other-things-worth-doing)). |
+| NCSC-SSCOP-3.3 | Detect, prioritise and manage vulnerabilities in the software and its components | 🟡 Partial | [28 §4](../28-supply-chain-and-build-inputs.md#4-advisories-and-where-a-package-came-from), [18 §8](../18-security-and-privacy.md#8-dependencies), [33 §4](../33-security-review.md#4-the-automated-checks) | Advisory gate and scheduled report; no fix deadline, no SAST. |
+| NCSC-SSCOP-3.4 | Report vulnerabilities to relevant external parties where appropriate | ❌ Gap |  | No rule to report upstream to a component's maintainer or to a coordinator. |
+| NCSC-SSCOP-3.5 | Provide timely security updates and tell customers about them | 🟡 Partial | [16 §4.3](../16-ci-cd.md#43-production), [16 §5](../16-ci-cd.md#5-release-notes-and-changelog) | One deploy patches every customer; no fix deadline, no security advisory to customers. |
+| NCSC-SSCOP-4.1 | Tell customers the level of support and maintenance provided | 🏢 Org |  | Commercial terms; not in repo. |
+| NCSC-SSCOP-4.2 | Give at least a year's notice before support for a product ends | 🏢 Org | [06 §8](../06-api-contract-and-codegen.md#8-versioning-and-compatibility) | Commercial commitment; API versioning helps, no notice period for app builds or API versions. |
+| NCSC-SSCOP-4.3 | Share information with customers about notable incidents that may affect them | ❌ Gap |  | No incident process or customer notification (see NCSC-CSP-5.3). |
+
+---
+
+Sources: [NCSC Cloud Security Principles](https://www.ncsc.gov.uk/collection/cloud/the-cloud-security-principles) and its principle pages (e.g. [Principle 2](https://www.ncsc.gov.uk/collection/cloud/the-cloud-security-principles/principle-2-asset-protection-and-resilience), [Principle 5](https://www.ncsc.gov.uk/collection/cloud/the-cloud-security-principles/principle-5-operational-security), [Principle 13](https://www.ncsc.gov.uk/collection/cloud/the-cloud-security-principles/principle-13-audit-information-and-alerting-for-customers)); [Software Security Code of Practice](https://www.gov.uk/government/publications/software-security-code-of-practice/software-security-code-of-practice); [Code of Practice assurance principles and claims](https://www.ncsc.gov.uk/guidance/software-security-code-of-practice-assurance-principles-claims); [Code of Practice self-assessment template](https://www.ncsc.gov.uk/files/Software-Security-Code-of-Practice-Self-Assessment-Template.docx). Checked 2026-11-02.

@@ -168,7 +168,7 @@ architecture they are applied to.
 | [30-sign-in-branding-and-email.md](docs/30-sign-in-branding-and-email.md) | Styling the hosted sign-in page, putting it on your own domain, sending from your own domain, and the zero-dependency custom message trigger |
 | [31-multi-tenancy.md](docs/31-multi-tenancy.md) | SEPARATE CUSTOMERS: silo, pooled or store-per-tenant; which barriers survive a deliberate code change; the cloud limits that decide it; brand configuration, provisioning and offboarding |
 | [32-mobile-delivery.md](docs/32-mobile-delivery.md) | Mobile accounts and identifiers, build identity, runners and signing, TestFlight and App Store, Play tracks and testers, store writes, listings as code, device flows, real-device measurement, help videos |
-| [33-security-review.md](docs/33-security-review.md) | Running a security review: picking the ASVS level, threat model, automated checks, the penetration test, and the checklists in [security-review/](docs/security-review/) — ASVS 5.0 L1–L3, OWASP Top 10 (web, API, LLM, agentic), an attack catalogue, MASVS, Cyber Essentials and ISO 27001 Annex A, each row marked with the rule here that covers it |
+| [33-security-review.md](docs/33-security-review.md) | Running a security review: picking the ASVS level, threat model, automated checks, the penetration test, and the checklists in [security-review/](docs/security-review/) — ASVS 5.0 L1–L3, OWASP Top 10 (web, API, CI/CD, LLM, agentic), an attack catalogue, MASVS, Cyber Essentials, ISO 27001 Annex A, SLSA / OpenSSF Scorecard / NIST SSDF, the CIS AWS Foundations Benchmark, UK GDPR with a DPIA template, and (optional) the NCSC Cloud Security Principles and Software Security Code of Practice, each row marked with the rule here that covers it |
 
 ---
 

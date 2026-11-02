@@ -7,11 +7,15 @@ built to this set. The checklists are in [security-review/](security-review/):
 | Checklist | Standard | Use it for |
 |---|---|---|
 | [asvs-5.0](security-review/asvs-5.0.md) | OWASP ASVS 5.0.0, L1 / L2 / L3 | The application: API, web client, sign-in, tokens, data |
-| [owasp-top-10](security-review/owasp-top-10.md) | OWASP Top 10, API Security Top 10, LLM Top 10, Agentic Top 10 | Awareness, and a cross-check that the ASVS pass missed no whole class |
+| [owasp-top-10](security-review/owasp-top-10.md) | OWASP Top 10, API Security Top 10, CI/CD Security Risks, LLM Top 10, Agentic Top 10 | Awareness, and a cross-check that the ASVS pass missed no whole class |
 | [attacks](security-review/attacks.md) | Named attacks, with OWASP WSTG test ids | The test plan for a manual pass or a penetration test |
 | [masvs](security-review/masvs.md) | OWASP MASVS 2 | The mobile app |
 | [cyber-essentials](security-review/cyber-essentials.md) | UK Cyber Essentials | The organisation's devices, accounts and cloud estate |
 | [iso-27001](security-review/iso-27001.md) | ISO/IEC 27001:2022 Annex A | The information security management system around the product |
+| [supply-chain](security-review/supply-chain.md) | SLSA v1.2 (Build and Source tracks), OpenSSF Scorecard, NIST SSDF 1.1 | The repository, the git host, the pipeline and what it ships |
+| [cis-aws](security-review/cis-aws.md) | CIS AWS Foundations Benchmark v7.0.0, plus the AWS Foundational Security Best Practices for the services used | The cloud accounts' own settings, which no application rule reaches |
+| [uk-gdpr](security-review/uk-gdpr.md) | UK GDPR, the ICO Accountability toolkit, PECR, as amended by the Data (Use and Access) Act 2025; a DPIA template | Personal data: lawful basis, rights, records, processors, breaches, transfers |
+| [ncsc](security-review/ncsc.md) | **Optional.** NCSC Cloud Security Principles, and the Software Security Code of Practice | A UK public-sector buyer, G-Cloud, or a customer that asks for the Code of Practice self-assessment |
 
 **Every row in every checklist says whether a rule in this set covers it**, and links the
 rule. That column answers "what does building to this set already give us", not "have we
@@ -58,7 +62,9 @@ passed". See § 1, rule 3.
 | Before the first production release | ASVS at the chosen level, the Top 10 lists, the attack plan, MASVS if there is an app |
 | A change to sign-in, tokens, the role gate, tenancy, the tool server or the OAuth broker | The ASVS chapters for that area (V6–V10, V8 for tenancy), and the attacks that target it |
 | A new external input: a webhook, an upload, inbound mail, a new third-party API | V1, V2, V4, V5, V13.2 and the injection, upload and SSRF attacks |
-| Every year | All of it. Cyber Essentials must be renewed every 12 months anyway |
+| A new kind of personal data, a new purpose for it, or a new processor or region | The UK GDPR checklist, and the DPIA if the processing is high-risk |
+| A change to the pipeline, the git host's settings or the release process | The supply-chain checklist and the CI/CD Top 10 |
+| Every year | All of it, except the NCSC checklist unless a buyer asks. Cyber Essentials must be renewed every 12 months anyway |
 | An ISO 27001 surveillance or recertification audit | The ISO checklist, with the ASVS result as the evidence for 8.25–8.29 |
 
 ---
@@ -93,7 +99,10 @@ one.** A checklist finds the controls that are missing. It does not find the fea
 should not exist, and it does not know which boundary matters most for this product.
 
 Use STRIDE (spoofing, tampering, repudiation, information disclosure, denial of service,
-elevation of privilege) at each boundary. The boundaries in this architecture are:
+elevation of privilege) at each boundary. Where personal data crosses a boundary, run
+LINDDUN over it as well — STRIDE finds the attacker, LINDDUN finds the privacy harm the
+system does by design, and its output is the risk section of the data protection impact
+assessment ([uk-gdpr](security-review/uk-gdpr.md)). The boundaries in this architecture are:
 
 | Boundary | Where it is set out | The threat to start with |
 |---|---|---|
@@ -163,11 +172,21 @@ in this set. The detail, and the rule for each row, is in the checklist.
 | [ISO/IEC 27001:2022 Annex A](security-review/iso-27001.md) | 18 | 38 | 6 | 0 | 31 | 93 |
 | [OWASP Top 10:2025](security-review/owasp-top-10.md) | 4 | 6 | 0 | 0 | 0 | 10 |
 | [OWASP API Security Top 10:2023](security-review/owasp-top-10.md) | 4 | 5 | 1 | 0 | 0 | 10 |
+| [OWASP Top 10 CI/CD Security Risks](security-review/owasp-top-10.md) | 1 | 7 | 2 | 0 | 0 | 10 |
 | [OWASP Top 10 for LLM Applications 2026](security-review/owasp-top-10.md) | 5 | 2 | 0 | 3 | 0 | 10 |
 | [OWASP Top 10 for LLM Applications 2025](security-review/owasp-top-10.md) | 5 | 2 | 0 | 3 | 0 | 10 |
 | [OWASP Top 10 for Agentic Applications (for 2026)](security-review/owasp-top-10.md) | 3 | 5 | 0 | 2 | 0 | 10 |
 | [OWASP MASVS 2.1.0](security-review/masvs.md) | 3 | 8 | 10 | 3 | 0 | 24 |
 | [Attack catalogue](security-review/attacks.md) | 21 | 21 | 8 | 2 | 0 | 52 |
+| [SLSA v1.2 Build track](security-review/supply-chain.md) | 1 | 3 | 4 | 0 | 0 | 8 |
+| [SLSA v1.2 Source track](security-review/supply-chain.md) | 3 | 6 | 5 | 0 | 0 | 14 |
+| [OpenSSF Scorecard](security-review/supply-chain.md) | 3 | 5 | 7 | 5 | 0 | 20 |
+| [NIST SSDF 1.1](security-review/supply-chain.md) | 3 | 15 | 0 | 0 | 1 | 19 |
+| [CIS AWS Foundations v7.0.0](security-review/cis-aws.md) | 2 | 11 | 44 | 12 | 1 | 70 |
+| [AWS FSBP, services used](security-review/cis-aws.md) | 8 | 22 | 7 | 1 | 0 | 38 |
+| [UK GDPR and ICO toolkit](security-review/uk-gdpr.md) | 3 | 45 | 17 | 6 | 31 | 102 |
+| [NCSC Cloud Security Principles](security-review/ncsc.md) (optional) | 5 | 10 | 6 | 0 | 3 | 24 |
+| [Software Security Code of Practice](security-review/ncsc.md) (optional) | 3 | 6 | 3 | 0 | 2 | 14 |
 
 ### 6.1 The gaps that matter most
 
@@ -219,13 +238,13 @@ architecture should also check, and whether a rule here covers them.
 | Item | Why | Rule here |
 |---|---|---|
 | A `/.well-known/security.txt` (RFC 9116) and a vulnerability disclosure policy | A researcher who finds a hole needs somewhere to send it | **No** |
-| A data protection impact assessment and a record of processing (UK GDPR Art. 30 and 35) | Required before high-risk processing of personal data, and the first thing a regulator asks for | Partial — the personal-data gate of [18](18-security-and-privacy.md) § 3 tells you which endpoints are in scope |
+| A data protection impact assessment and a record of processing (UK GDPR Art. 30 and 35) | Required before high-risk processing of personal data, and the first thing a regulator asks for | Partial — the personal-data gate of [18](18-security-and-privacy.md) § 3 tells you which endpoints are in scope. Checklist and DPIA template: [uk-gdpr](security-review/uk-gdpr.md) |
 | An incident response runbook, with a named owner and a tested contact list | A breach of personal data must be reported to the ICO within 72 hours of becoming aware of it | **No** |
 | A restore test from backup, on a schedule | A backup that was never restored is a hope | **No** — [29](29-hardening-that-costs-nothing.md) § 3 and § 7 name recovery, but nothing tests a restore |
 | A security audit trail: sign-in, role and membership changes, administrative actions, cross-tenant overrides | ASVS V16.3, ISO 8.15, and the first question after an incident | Partial — [31](31-multi-tenancy.md) § 4.1 names a platform audit log; [17](17-observability-and-errors.md) does not log security events |
-| The cloud provider's account benchmark (CIS Foundations Benchmark) and its threat-detection service | Account-level settings no application rule reaches: root account, account trail, detection | Partial — [29](29-hardening-that-costs-nothing.md) § 5 and [15](15-infrastructure-and-environments.md) cover the account split and the roles |
-| Build provenance (SLSA) and the OpenSSF Scorecard on the repository | Proof that the artifact came from this source and this pipeline | Partial — [28](28-supply-chain-and-build-inputs.md) pins the inputs but does not attest the output |
-| The NCSC Cloud Security Principles, for a UK public-sector buyer | The 14 principles a public-sector buyer assesses a SaaS against | Not mapped here |
+| The cloud provider's account benchmark (CIS Foundations Benchmark) and its threat-detection service | Account-level settings no application rule reaches: root account, account trail, detection | Partial — [29](29-hardening-that-costs-nothing.md) § 5 and [15](15-infrastructure-and-environments.md) cover the account split and the roles. Checklist: [cis-aws](security-review/cis-aws.md) |
+| Build provenance (SLSA) and the OpenSSF Scorecard on the repository | Proof that the artifact came from this source and this pipeline | Partial — [28](28-supply-chain-and-build-inputs.md) pins the inputs but does not attest the output. Checklist: [supply-chain](security-review/supply-chain.md) |
+| The NCSC Cloud Security Principles, for a UK public-sector buyer | The 14 principles a public-sector buyer assesses a SaaS against | Optional checklist: [ncsc](security-review/ncsc.md) |
 | SOC 2 Type II, for a US buyer | The US equivalent of an ISO 27001 certificate in a procurement questionnaire | Not mapped here; most criteria map to ISO 27001 Annex A |
 
 ---
@@ -238,4 +257,5 @@ architecture should also check, and whether a rule here covers them.
   and fix the coverage column of every row that cites it.
 - **The standard's text in the ASVS checklist is OWASP's, licensed CC BY-SA 4.0.** The
   other checklists are written in this set's own words and use only the identifiers and
-  titles of the standards they map.
+  titles of the standards they map. The CIS benchmark is licensed by CIS: never paste its
+  text into the checklist.
