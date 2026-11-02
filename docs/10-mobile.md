@@ -178,8 +178,8 @@ it, this check is an opinion.
 |---|---|
 | Unit | Store actions, sync scheduler, queues, caches, pure helpers. Colocated `*.test.ts`. |
 | Component | Rendering library for the platform. Native modules mocked in setup. |
-| Device flows | A flow-based tool driving a real build on a simulator or device. |
-| Device measurement | The harness in § 5. |
+| Device flows | A flow-based tool driving a real build on a simulator or device. Set-up and rules: [32-mobile-delivery](32-mobile-delivery.md) § 10. |
+| Device measurement | The harness in § 5. Set-up: [32-mobile-delivery](32-mobile-delivery.md) § 11. |
 
 Rules:
 
@@ -195,14 +195,9 @@ Rules:
 
 ## 8. Builds and distribution
 
-- Build in CI on a runner that has the platform toolchain. Keep the build job separate
-  from the test job.
-- A build's version and build number are derived from the pipeline, not hand-edited.
-- Store metadata — descriptions, icons, screenshots — lives in the repository and is
-  synced by a job, so a rejection is diagnosable from a diff.
-- **Read the platform's review policies before the first submission.** Names, icons, and
-  descriptions that imply an affiliation get rejected, and a rejection can cost the
-  ability to distribute at all while it is appealed.
+Accounts, build identity, runners, signing, store releases, store listings, device flows,
+real-device measurement and help videos are in
+[32-mobile-delivery](32-mobile-delivery.md).
 
 ---
 

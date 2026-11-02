@@ -346,6 +346,26 @@ Shorter rules with no incident behind them yet.
 
 ---
 
+## 19. Mobile delivery
+
+Full rules in [32-mobile-delivery](32-mobile-delivery.md).
+
+- [ ] No store write runs from a push, a schedule or a default input. Every write flag
+      defaults to off, and a guard test pins it.
+- [ ] The version string AND the build number are new on every build, set by the pipeline.
+- [ ] A new extension, App Group or capability: profiles made with an interactive
+      credentials run on the branch that adds it, before merge.
+- [ ] The generated mobile client reaches a build that packs from git.
+- [ ] Every local native module has its podspec / Gradle file; the link test passes.
+- [ ] No build output passed between jobs as a CI artifact.
+- [ ] A crash-report upload failure fails the job, even when a fallback build continues.
+- [ ] A green Play upload is not reported as "testers have it" until the track reader says
+      the release is published.
+- [ ] Device flows run one at a time on one device; the Android port map includes object
+      storage.
+
+---
+
 ## When to run which section
 
 | Situation | Sections |
@@ -356,7 +376,8 @@ Shorter rules with no incident behind them yet.
 | Any reported measurement | 6f/6g |
 | A refactor | 7, plus everything |
 | A client pull request | 9, 10, 11, 14, 15, 18 |
-| A mobile pull request | 17, plus 7 for contract compatibility |
+| A mobile pull request | 17, 19, plus 7 for contract compatibility |
+| A mobile build, release or store change | 19 |
 | Infrastructure or pipeline only | 5, 12 |
 | A merge or rebase conflict in an append-only region | 13 |
 | A feature that links to an external console | 16 |

@@ -8,12 +8,14 @@
 | **Backfill** | An idempotent, re-runnable script that brings existing rows to a new shape. |
 | **Branch** | A sub-unit **inside one customer** — a region, a chapter, a depot, a team. The scope most rows carry. One customer's top administrator legitimately sees every branch. |
 | **Broker facade** | A minimal authorization server a tool server runs in front of the real identity provider, because the provider has no dynamic client registration. It issues its own opaque tokens and stores the provider's. |
+| **Build number** | The per-build integer the stores compare (`CFBundleVersion`, `versionCode`). Set by the pipeline, higher on every build. Not the version string. |
 | **Blast radius** | Every consumer of a symbol, type, table, or endpoint being changed. Mapped before a refactor. |
 | **Composition root** | The one place per deployable that reads configuration, constructs everything, and wires it. |
 | **Contract** | The request and response types of one endpoint. The only thing a client knows about the server. |
 | **Contract manifest** | The machine-readable description of every endpoint and its contract, extracted from source. |
 | **Dependency rule** | The application layer never imports the infrastructure layer. The rule everything else depends on. |
 | **Derived tool** | A tool the tool server builds by hand rather than from the contract manifest: it collapses a fixed call sequence, caps a large result, or redacts one. It suppresses the generated tool of the same name. |
+| **Device flow** | A scripted test that drives a real build of the mobile app on a simulator, emulator or device, against the real local backend. |
 | **Discovery sentinel** | A test that fails when a new thing of a known kind has no fixture — the thing that stops the next table being added without a test. |
 | **Domain entity** | A plain data type describing what is persisted. No behaviour, no I/O. Never appears in a contract. |
 | **Double** | Any stand-in for a real collaborator in a test: a fake, a stub, a mock. |
@@ -40,6 +42,7 @@
 | **Port** | An interface the application declares for something outside it. Implemented by the infrastructure layer. |
 | **Pre-production** | The deployed environment fed by the integration branch. Real cloud, disposable data. |
 | **Privacy classification** | The required per-endpoint declaration of whether a response can carry personal data. Extracted into a runtime gate. |
+| **Release test build** | A release-mode mobile build that may reach the local backend for device tests. A flag CI never sets for a store build. |
 | **Repository** | The infrastructure implementation of a persistence port. |
 | **Request scope** | The per-request implementations of the ambient-state ports, built by the entrypoint and destructured into the use cases that declare them. Never passed to a use case whole. |
 | **Ambient-state port** | A narrow interface carrying one piece of request-scoped state: who is calling, their roles, the tenant, the time, the client version, the client instance. |
@@ -47,6 +50,7 @@
 | **Route table** | The generated dispatcher table mapping namespace and method to a use case and its required roles. Security-relevant. |
 | **Scoped repository** | A repository whose base class enforces tenant isolation on every read and write. |
 | **Slopsquatting** | Registering a package name a model invented or misspelled, so that the install runs the attacker's code. The reason a dependency needs a named decision. |
+| **Store write** | Any call that changes a store: an upload to a track, a listing edit, a submission for review. Manual, flag off by default. |
 | **Silent no-op** | Work that never ran, with no error, because it was detached, unwired, or replaced by a no-op. |
 | **Simulator** | A local stand-in for an external service, used by the local host and the end-to-end suite. |
 | **Staged payload** | A tool-call body a script uploads to an anonymous endpoint for a short time. The tool call sends only its id, and the dispatcher swaps the body in for the tool server's callers. |
@@ -56,6 +60,7 @@
 | **Tenant** | Another **customer**: its own contract, brand, administrators, data controller and right to leave. Not a branch. The topology that separates tenants is a decision in its own right. |
 | **Test identifier** | A stable attribute on an element, the only permitted selector in end-to-end tests. |
 | **Topology (tenancy)** | Which shape separates customers: silo (a deployment each), pooled (a tenant attribute on every row) or store-per-tenant (a data store each). |
+| **Track** | A Play distribution channel: internal, closed, open or production. Each upload to one restarts its review. |
 | **Two-state control** | Anything that opens and closes, expands and collapses, enables and disables. Both directions are tested. |
 | **Use case** | One user-facing intent: one class, one execute method, one request type, one response type, one endpoint. |
 | **Vacuous test** | A test that stays green when the behaviour it names is broken. Worse than no test, because it reads as coverage. |

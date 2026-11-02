@@ -79,7 +79,8 @@ Read in this order, and do the work in this order:
    same time, before a date field exists to argue about.
 6. [14-local-dev-and-simulators](docs/14-local-dev-and-simulators.md) — make the whole stack runnable offline before adding
    the third feature.
-7. [09-frontend](docs/09-frontend.md), then [10-mobile](docs/10-mobile.md).
+7. [09-frontend](docs/09-frontend.md), then [10-mobile](docs/10-mobile.md). Before the first mobile
+   build, do § 1 of [32-mobile-delivery](docs/32-mobile-delivery.md): store identifiers are permanent.
 8. `11`–`13` testing — write the first test of each kind alongside the first feature,
    never as a later pass.
 9. [16-ci-cd](docs/16-ci-cd.md).
@@ -164,6 +165,7 @@ architecture they are applied to.
 | [29-hardening-that-costs-nothing.md](docs/29-hardening-that-costs-nothing.md) | The settings that are already paid for: the flat-rate edge plan, identity, data, email, account, and what is NOT free |
 | [30-sign-in-branding-and-email.md](docs/30-sign-in-branding-and-email.md) | Styling the hosted sign-in page, putting it on your own domain, sending from your own domain, and the zero-dependency custom message trigger |
 | [31-multi-tenancy.md](docs/31-multi-tenancy.md) | SEPARATE CUSTOMERS: silo, pooled or store-per-tenant; which barriers survive a deliberate code change; the cloud limits that decide it; brand configuration, provisioning and offboarding |
+| [32-mobile-delivery.md](docs/32-mobile-delivery.md) | Mobile accounts and identifiers, build identity, runners and signing, TestFlight and App Store, Play tracks and testers, store writes, listings as code, device flows, real-device measurement, help videos |
 
 ---
 

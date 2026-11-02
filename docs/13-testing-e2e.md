@@ -266,7 +266,8 @@ subset of specs against it. Keep the configurations in agreement with a parity t
 fails when one gains a setting the other lacks.
 
 Device flows for the native app are a separate tool and a separate job. They cover
-sign-in, the main task, and offline behaviour — not every screen.
+sign-in, the main task, and offline behaviour — not every screen. Their set-up, the
+emulator port mapping and the run rules are in [32-mobile-delivery](32-mobile-delivery.md) § 10.
 
 ---
 
