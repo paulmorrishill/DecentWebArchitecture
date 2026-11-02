@@ -190,6 +190,8 @@ pinned pipeline actions, image digests and binary hashes, and federated pipeline
 credentials — is [28-supply-chain-and-build-inputs](28-supply-chain-and-build-inputs.md).
 The settings that cost nothing to turn on are
 [29-hardening-that-costs-nothing](29-hardening-that-costs-nothing.md).
+How to check all of it against a published standard is
+[33-security-review](33-security-review.md).
 
 ---
 
