@@ -19,6 +19,7 @@
 | **Discovery sentinel** | A test that fails when a new thing of a known kind has no fixture — the thing that stops the next table being added without a test. |
 | **Domain entity** | A plain data type describing what is persisted. No behaviour, no I/O. Never appears in a contract. |
 | **Double** | Any stand-in for a real collaborator in a test: a fake, a stub, a mock. |
+| **Download link** | A short-lived signed GET URL a tool answers in place of a large JSON answer, when the call sends `returnDownloadLink: true`. A script downloads it with no token. |
 | **End-to-end suite** | Browser-driven tests against the real interface and a real backend. No faked API responses. |
 | **Entrypoint** | The transport-aware layer: request handler, worker, scheduled job, local host. |
 | **Confused deputy** | A proxy authorization server with one upstream client, open registration and an upstream sign-in cookie, which turns a silent login into a code for an attacker's client. The consent page is the control. |

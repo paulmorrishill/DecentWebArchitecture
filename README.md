@@ -161,7 +161,7 @@ architecture they are applied to.
 | [23-new-feature-recipe.md](docs/23-new-feature-recipe.md) | End-to-end recipe from spec to merged |
 | [24-glossary.md](docs/24-glossary.md) | Terms used across the set |
 | [25-typed-values-and-serialization.md](docs/25-typed-values-and-serialization.md) | Date and time types, money, the wire format, converters, client rehydration |
-| [26-staged-tool-payloads.md](docs/26-staged-tool-payloads.md) | Large agent tool-call bodies: anonymous staging, the dispatcher swap, cost ceilings |
+| [26-staged-tool-payloads.md](docs/26-staged-tool-payloads.md) | Large agent tool-call bodies and answers: anonymous staging, the dispatcher swap, cost ceilings, short-lived download links |
 | [27-tool-servers-and-mcp.md](docs/27-tool-servers-and-mcp.md) | The agent tool surface: the allowlist in the API, context budget, file and JSON intake, per-login tenant, the OAuth broker and its consent page |
 | [28-supply-chain-and-build-inputs.md](docs/28-supply-chain-and-build-inputs.md) | Admitting a dependency, install scripts off, release age, advisories, pinned actions, digests and hashes, federated pipeline credentials |
 | [29-hardening-that-costs-nothing.md](docs/29-hardening-that-costs-nothing.md) | The settings that are already paid for: the flat-rate edge plan, identity, data, email, account, and what is NOT free |

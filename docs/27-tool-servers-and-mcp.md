@@ -104,6 +104,10 @@ tool returns. Treat both as a budget.
   schema, the total count, the next offset, and a bounded page. Cap on the tool side as
   well as the server side — a model that asks for 100,000 rows should get a usable answer,
   not an error.
+- **A large answer goes out as a download link.** Every tool takes an optional
+  `returnDownloadLink: true`; the tool then answers a short-lived signed URL in place of
+  the JSON, and a script downloads it with no token. See
+  [26-staged-tool-payloads](26-staged-tool-payloads.md) § 9.
 - **Surface the number that changes the reading.** "900 uploaded" and "860 on the map"
   are different answers; the dropped count is what tells them apart.
 - **A derived tool replaces a passthrough** when the passthrough returns too much, or
@@ -137,6 +141,9 @@ in **[26-staged-tool-payloads](26-staged-tool-payloads.md)**. The short form:
 - The swap runs before tenant resolution and before the role gate, so no use case knows
   the pattern exists.
 - The tenant never comes from inside the staged body.
+- The other direction is a download link (§ 3 and
+  [26-staged-tool-payloads](26-staged-tool-payloads.md) § 9). Together they let an agent
+  download a large entity, edit it on disk, stage it and send it back by id.
 
 ### 4.2 A file: one derived tool runs the whole upload
 
@@ -419,7 +426,7 @@ as hashes, and the transport divergence being a named list with a test.
    sentinel test and the personal-data test.
 3. Stand up the local transport first. It needs no hosting and proves the tool surface.
 4. Add the derived tools that collapse multi-call sequences and cap large results.
-5. Add staged payloads ([26-staged-tool-payloads](26-staged-tool-payloads.md)).
+5. Add staged payloads and download links ([26-staged-tool-payloads](26-staged-tool-payloads.md)).
 6. Add the active-tenant tools and the precedence rule.
 7. Build the hosted transport on the SDK's authorization router: metadata, registration,
    authorize, token, revoke.

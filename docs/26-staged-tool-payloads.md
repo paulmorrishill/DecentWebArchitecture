@@ -1,4 +1,4 @@
-# 26 — Staged payloads for large agent tool calls
+# 26 — Staged payloads and download links for large agent tool calls
 
 An AI agent that calls the API through a tool server (an MCP server, or any tool layer
 that turns endpoints into model tools) must write every tool argument token by token,
@@ -10,6 +10,9 @@ from outside the call.
 This file is the pattern that closes that gap: **a script uploads the body to an
 anonymous staging endpoint and gets an id back; the tool call sends only the id; the
 API dispatcher swaps the id for the staged body, for tool-server callers only.**
+
+The other direction, a large tool *answer*, is § 9: the tool answers a short-lived signed
+download URL in place of the JSON.
 
 Reference implementation: Reference A, ADR "Anonymous JSON staging for MCP tool calls".
 
@@ -325,7 +328,242 @@ read, and a ceiling on every cost axis.
 
 ---
 
-## 9. Adopting it
+## 9. The other direction: a large answer as a download link
+
+Staging moves a large body *into* a tool call. A large *answer* has the same problem in
+the other direction: a tool that reads a layout or a long document returns it inline, and
+the JSON fills the conversation. An edit of a large entity needs both directions.
+
+The pattern: **every tool takes an optional `returnDownloadLink: true`. The tool server
+stores the final answer through an authenticated publish endpoint, the API puts the JSON
+in object storage under a random key, and the tool answers a short-lived signed GET URL in
+place of the JSON. A script downloads the URL with no token.**
+
+Reference implementation: Reference A, ADR "An MCP tool can answer a short-lived download
+URL".
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant T as Tool server<br/>(holds the login)
+    participant P as API
+    participant O as Object storage
+    participant S as Script<br/>(no token)
+    A->>T: tool call { ..., returnDownloadLink: true }
+    Note right of T: take returnDownloadLink out<br/>before the endpoint runs
+    T->>P: POST /orders/get { ... }<br/>+ the tool server's token
+    P-->>T: the answer JSON
+    T->>P: POST /tool-payloads/publishResponse { payload }<br/>+ the tool server's token
+    Note right of P: caller is the tool server?<br/>size check
+    P->>O: put tool-responses/<random key>.json
+    P-->>T: { url, expiresAt, bytes }
+    T-->>A: { url, expiresAt, bytes }
+    A->>S: writes the script
+    S->>O: GET url<br/>no Authorization header
+    O-->>S: the answer JSON
+```
+
+### 9.1 The publish endpoint
+
+```ts
+@ApiEndpoint({ namespace: 'toolPayloads', method: 'publishResponse', roles: ['Editor'], personalData: false })
+export class PublishToolResponseUseCase {
+  constructor(
+    private readonly fileStore: Pick<FileStore, 'putFile' | 'getDownloadSignedUrl'>,
+    private readonly toolServerAudience: string | null,
+    private readonly newKey: () => string = () => randomBytes(16).toString('hex'),
+  ) {}
+
+  async execute(request: PublishToolResponseRequest, context: RequestContext): Promise<PublishToolResponseResponse> {
+    if (!this.toolServerAudience || context.audience !== this.toolServerAudience) {
+      throw new ForbiddenError('Only the tool server can publish a tool answer.');
+    }
+    if (request?.payload === undefined) throw new ValidationError('`payload` is required.');
+
+    const payloadJson = JSON.stringify(request.payload);
+    const bytes = Buffer.byteLength(payloadJson, 'utf8');
+    if (bytes > MAX_TOOL_RESPONSE_BYTES) {
+      throw new ValidationError(
+        `The answer is ${bytes} bytes, larger than ${MAX_TOOL_RESPONSE_BYTES} bytes. Narrow the call and try again.`,
+      );
+    }
+    const key = `${TOOL_RESPONSE_KEY_PREFIX}${this.newKey()}.json`;
+    await this.fileStore.putFile(key, Buffer.from(payloadJson, 'utf8'), 'application/json');
+    const url = await this.fileStore.getDownloadSignedUrl(key, TOOL_RESPONSE_URL_LIFETIME_SECONDS);
+    const expiresAt = new Date(Date.parse(context.nowIso) + TOOL_RESPONSE_URL_LIFETIME_SECONDS * 1000).toISOString();
+    return { url, expiresAt, bytes };
+  }
+}
+```
+
+Rules:
+
+- **The endpoint needs a login, and only the tool server's audience may call it.** The
+  role gate alone is not enough: a web or mobile token passes it, and the endpoint would
+  then turn any JSON into a URL that needs no token. Check the verified audience claim in
+  the use case and answer 403 for every other caller. An unset audience must refuse
+  everybody, as in § 3.
+- **The script needs no token.** The login lives in the tool server. The signature in the
+  URL is the only credential the script holds.
+- **The key is made on the server**, from 16 bytes of the operating system's secure random
+  source (128 bits), under a prefix that holds nothing else. Never build the key from
+  caller input.
+- **The URL is short-lived and reusable.** Reference A: 600 seconds. The script can fetch
+  it more than once inside that window, so a failed download can retry.
+- **Answer `{ url, expiresAt, bytes }` and nothing else.** `bytes` lets the agent decide
+  how to read the file before it downloads it.
+- **Size is counted in UTF-8 bytes.** Set the answer limit to the stage limit, so an entity
+  that can be downloaded can be staged back after an edit. Keep the limit below the
+  function's request body limit (Reference A: 5,000,000 bytes against a 6 MB body limit).
+  The refusal message tells the agent what to do: narrow the call.
+- **An object-storage lifecycle rule is the only delete.** Reference A: the prefix expires
+  after one day. The URL stops working long before that; the rule only stops the bill.
+- **Do not log the payload**, and do not write an audit event for a publish. The answer
+  is a copy of data the caller has already read.
+- **Personal data:** the endpoint stores only what the caller sends. Classify it as
+  returning no personal data only when the tool server's allowlist holds no endpoint that
+  returns personal data, and pin that with a guard test
+  ([18-security-and-privacy](18-security-and-privacy.md) § 2). If the allowlist holds such
+  an endpoint, classify the publish endpoint as personal data too.
+- **Put the endpoint on the tool server's allowlist**
+  ([27-tool-servers-and-mcp](27-tool-servers-and-mcp.md)). The dispatcher calls it, not the
+  model, but the API refuses a tool-server token on an endpoint that is not on the list.
+
+### 9.2 The dispatcher in the tool server
+
+```ts
+const { returnDownloadLink, rest: args } = splitReturnDownloadLink(request.params.arguments ?? {});
+// ...run the passthrough or the derived tool with `args`...
+const text = JSON.stringify(returnDownloadLink ? await publishToolAnswer(api, result) : result, null, 2);
+```
+
+Rules:
+
+- **Take the argument out first, for every tool**, before any endpoint or handler sees it.
+  This includes derived tools and tenant tools. A value that is not a boolean is a tool
+  error, and no API call runs.
+- **Publish once, with the final result.** A derived tool that makes four inner calls
+  answers one URL for its shaped result, not one URL for each inner call.
+- **A failed call answers its error, never a URL.**
+- **A publish that fails after the call ran says that the call ran.** Reference A:
+  "The call ran, but its answer could not be made into a download link". For a write,
+  the agent must not retry a write that already happened.
+- **Check the size in the tool server too**, before the publish call. An answer over the
+  limit then never leaves the tool server, and the error comes back without a round trip.
+- **A result of `undefined` is stored as JSON `null`.**
+- **Notes the tool server adds to every answer stay** (Reference A: the active-branch
+  note). They go in the tool text next to the link, not inside the stored JSON.
+
+### 9.3 The tool schema
+
+```ts
+export function withReturnDownloadLinkProperty(schema: JsonSchema): JsonSchema {
+  if (schema.properties && RETURN_DOWNLOAD_LINK_PROPERTY in schema.properties) {
+    throw new Error(`Tool schema already declares "${RETURN_DOWNLOAD_LINK_PROPERTY}".`);
+  }
+  return {
+    ...schema,
+    properties: { ...(schema.properties ?? {}), [RETURN_DOWNLOAD_LINK_PROPERTY]: { type: 'boolean' } },
+  };
+}
+```
+
+- **Every tool gets the property**, including tools with no body and hand-written tools.
+  This is different from `stagedPayloadId`: any tool can answer a large result. Do not
+  keep a list of "large answer" endpoints; the list drifts.
+- **The property is optional and changes no `required` list.**
+- **Refuse a schema that already declares the property.**
+- **No description on the property.** Explain it once, in the tool server's instructions:
+
+  > Large answers: every tool takes an optional `"returnDownloadLink": true` argument.
+  > With it the tool answers `{ "url": "<URL>", "expiresAt": "<ISO time>", "bytes": <size> }`
+  > in place of its JSON. A script downloads the JSON with a plain GET of the URL and no
+  > Authorization header. The URL works for 10 minutes and can be fetched more than once.
+  > The answer is at most 5,000,000 bytes of JSON. A call without the argument answers
+  > inline, whatever its size. A failed call answers its error, never a URL.
+
+### 9.4 The edit loop
+
+The two directions together let an agent edit a large entity without the JSON in the
+conversation:
+
+1. Call the read tool with `"returnDownloadLink": true`, and download the URL to a file.
+2. Edit the file on disk with a script. Keep every field the update tool needs.
+3. Stage the edited JSON (§ 2).
+4. Call the update tool with only `stagedPayloadId`, and the tenant argument if needed.
+
+Put this loop in the tool server's instructions, after the two paragraphs above.
+
+**A tool that replaces a whole large entity can require the loop.** Its published schema
+accepts `stagedPayloadId` and nothing else, apart from the tenant argument and
+`returnDownloadLink`. The caller already sends the whole body for such a tool, so the
+round trip costs nothing extra, and it stops the model writing the body into the
+conversation. Keep the list of such tools in the tool server, and fail the build when the
+list names a tool that is not on the allowlist or has no body. A small write stays inline.
+
+### 9.5 Cost and risk
+
+- **Cost follows real use**, because the publish endpoint needs a login. Reference A:
+  1,000 answers a month cost under £0.10. No anonymous ceiling is needed.
+- **Anyone who has the URL can download the answer until it expires.** The URL goes only
+  to the caller's own tool-server session. Keep the lifetime short.
+- **The object stays in the bucket until the lifecycle rule runs**, up to a day after the
+  URL stops working.
+
+### 9.6 Options rejected
+
+| Option | Why not |
+|---|---|
+| The argument on chosen endpoints only | The list of large-answer endpoints is a guess and drifts. Every tool costs one boolean. |
+| An anonymous read-back endpoint keyed by an id | A leaked id becomes a data leak, and the endpoint is one more anonymous cost axis. A signed URL lets the object store do the read. |
+| A read endpoint that takes the tool server's token | The script would need the token. Handing it to a script is the thing the pattern exists to avoid. |
+| Paging the answer inline | The JSON still passes through the conversation, page by page. |
+
+### 9.7 Tests
+
+**Publish use case**
+- needs a login with the allowed roles;
+- refuses a caller that is not the tool server's audience with 403, and refuses every
+  caller when no audience is configured;
+- stores the JSON under the random key and answers a signed URL with the configured
+  lifetime;
+- answers `expiresAt` one lifetime after the request time;
+- counts the size in UTF-8 bytes, not characters;
+- accepts an answer of exactly the size limit; refuses one byte over, and stores nothing;
+- makes a new key for each call, from 16 secure random bytes.
+
+**Dispatcher and schema**
+- adds an optional boolean and keeps the rest of the schema; adds it to a schema with no
+  properties; refuses a schema that already declares it;
+- answers `false` and the same arguments when the property is absent; refuses a value
+  that is not a boolean, and calls nothing;
+- posts the result as the payload and answers the link; stores `undefined` as `null`;
+- sends an answer of exactly the limit; refuses one byte over and sends nothing; counts
+  UTF-8 bytes;
+- wraps a publish refusal in a message that says the call ran.
+
+**End to end**, against the real API, the real object store and the real tool-server token
+([13-testing-e2e](13-testing-e2e.md)):
+- a passthrough answer comes back as a URL that a plain GET with no token downloads;
+- the URL can be fetched twice, and stops working after its lifetime;
+- an answer over the limit is a tool error that says to narrow the call;
+- the publish endpoint stores exactly the limit and refuses one byte more;
+- a derived tool answers one URL for its shaped result;
+- the tool server's notes are still shown;
+- download, edit, stage, update: a large entity is edited without its JSON in the
+  conversation;
+- an unknown key does not download;
+- a non-boolean argument is a tool error, and nothing is called;
+- a failed call answers the error, not a URL;
+- the publish endpoint refuses an anonymous call and a web app token.
+
+**Guards**: the lifecycle rule exists for the prefix; the publish endpoint is on the
+allowlist; the allowlist holds no endpoint that returns personal data.
+
+---
+
+## 10. Adopting it
 
 1. Write the decision record ([20-decision-records](20-decision-records.md)) with the
    worst-case cost numbers.
@@ -337,3 +575,8 @@ read, and a ceiling on every cost axis.
 7. In the tool server, add the property to every body tool and the paragraph to the
    instructions.
 8. Write the tests in § 7, and see each one fail once for the right reason.
+9. For large answers: add the publish use case (§ 9.1), the lifecycle rule on its prefix,
+   and the allowlist entry.
+10. In the tool server, add `returnDownloadLink` to every tool, the dispatcher step (§ 9.2)
+    and the instructions paragraphs (§ 9.3, § 9.4).
+11. Write the tests in § 9.7, and see each one fail once for the right reason.

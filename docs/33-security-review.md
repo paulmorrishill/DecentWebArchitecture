@@ -112,6 +112,7 @@ assessment ([uk-gdpr](security-review/uk-gdpr.md)). The boundaries in this archi
 | Tenant → tenant | [31](31-multi-tenancy.md) § 2 | A barrier that is only code |
 | Machine client → tool server and OAuth broker | [27](27-tool-servers-and-mcp.md) | A confused deputy, and prompt injection through tool output |
 | Anonymous staging of large payloads | [26](26-staged-tool-payloads.md) | Cost abuse and a payload read by the wrong caller |
+| Download links for large tool answers | [26](26-staged-tool-payloads.md) § 9 | A web token that turns any JSON into a URL with no token, and a leaked URL |
 | Third party → webhook, inbound mail, upload | [18](18-security-and-privacy.md) § 4 | An unverified signature, a hostile file |
 | Mobile device → offline store and sync | [10](10-mobile.md) | A lost device, and a replayed or forged sync |
 | Developer, agent and pipeline → cloud account | [28](28-supply-chain-and-build-inputs.md), [16](16-ci-cd.md), [15](15-infrastructure-and-environments.md) | A dependency or a pull request that runs code with the deploy role |
