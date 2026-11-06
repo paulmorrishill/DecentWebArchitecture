@@ -392,7 +392,7 @@ Each of these is a cross-customer leak, and none of them looks like one:
 ### 5.2 Keys (R4, R6)
 
 A branch slug that is the primary key is unique across the whole system. Two customers both
-want `north`, `canterbury`, `main`. The key becomes `tenantId#slug`, and the collision gets
+want `north`, `east`, `main`. The key becomes `tenantId#slug`, and the collision gets
 its own declared error value
 ([08-branches-and-data-scoping](08-branches-and-data-scoping.md) § 7).
 
