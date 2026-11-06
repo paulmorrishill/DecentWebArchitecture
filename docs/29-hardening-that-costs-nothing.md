@@ -26,7 +26,8 @@ the hosted zone. There is no overage charge.
 Reference A measured the pay-as-you-go alternative in October 2026: about **$5 per access
 control list per month plus about $1 per rule per month**, as **fixed** charges — the
 request volume added almost nothing. Six lists and about forty rules came to about $70 a
-month on production, and the staging equivalent tripped the cost kill switch.
+month on production, and the staging equivalent tripped the cost kill switch
+([34-cost-kill-switch](34-cost-kill-switch.md)).
 
 | Tier | Price for each distribution | Firewall rules | Cache behaviours | Custom firewall response | Header match | Custom response-headers policy | Access and firewall logs |
 |---|---|---|---|---|---|---|---|
@@ -69,7 +70,7 @@ What the free tier takes away:
 | Origin access control plus "block all public access" on the bucket | The static files have **no** public path at all. Only the one distribution can read them |
 | Managed cache and origin-request policies | Needed anyway on a plan, which refuses custom ones |
 | Gateway stage throttling | A second rate limit behind the firewall, set as a number |
-| Reserved concurrency of zero on a function | The pause lever for a cost emergency |
+| Reserved concurrency of zero on a function | The pause lever for a cost emergency ([34-cost-kill-switch](34-cost-kill-switch.md)) |
 
 **Two warnings, both of which have cost a day:**
 

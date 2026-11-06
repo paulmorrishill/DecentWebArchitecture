@@ -85,7 +85,8 @@ Read in this order, and do the work in this order:
    never as a later pass.
 9. [16-ci-cd](docs/16-ci-cd.md). Pick the ASVS level now and record it
    ([33-security-review](docs/33-security-review.md) § 2); review against it before the first
-   production release.
+   production release. If a runaway bill would hurt more than an outage, add the optional
+   [34-cost-kill-switch](docs/34-cost-kill-switch.md) before that release too.
 10. [20-decision-records](docs/20-decision-records.md), [21-agent-working-rules](docs/21-agent-working-rules.md), [22-pitfalls-checklist](docs/22-pitfalls-checklist.md) —
     copy these into the new repo as living documents on day one.
 
@@ -169,6 +170,7 @@ architecture they are applied to.
 | [31-multi-tenancy.md](docs/31-multi-tenancy.md) | SEPARATE CUSTOMERS: silo, pooled or store-per-tenant; which barriers survive a deliberate code change; the cloud limits that decide it; brand configuration, provisioning and offboarding |
 | [32-mobile-delivery.md](docs/32-mobile-delivery.md) | Mobile accounts and identifiers, build identity, runners and signing, TestFlight and App Store, Play tracks and testers, store writes, listings as code, device flows, real-device measurement, help videos |
 | [33-security-review.md](docs/33-security-review.md) | Running a security review: picking the ASVS level, threat model, automated checks, the penetration test, and the checklists in [security-review/](docs/security-review/) — ASVS 5.0 L1–L3, OWASP Top 10 (web, API, CI/CD, LLM, agentic), an attack catalogue, MASVS, Cyber Essentials, ISO 27001 Annex A, SLSA / OpenSSF Scorecard / NIST SSDF, the CIS AWS Foundations Benchmark, UK GDPR with a DPIA template, and (optional) the NCSC Cloud Security Principles and Software Security Code of Practice, each row marked with the rule here that covers it |
+| [34-cost-kill-switch.md](docs/34-cost-kill-switch.md) | **Optional.** A hard spend cap the cloud provider does not give you: a budget trip and per-distribution traffic alarms that shut the app down unattended, records written before every change, a flag the infrastructure reads back, held events, the owner-only reopen, guard tests and the drill |
 
 ---
 

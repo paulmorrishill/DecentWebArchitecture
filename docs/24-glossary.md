@@ -17,9 +17,11 @@
 | **Derived tool** | A tool the tool server builds by hand rather than from the contract manifest: it collapses a fixed call sequence, caps a large result, or redacts one. It suppresses the generated tool of the same name. |
 | **Device flow** | A scripted test that drives a real build of the mobile app on a simulator, emulator or device, against the real local backend. |
 | **Discovery sentinel** | A test that fails when a new thing of a known kind has no fixture — the thing that stops the next table being added without a test. |
+| **Distribution mode** | The cost kill switch closing one distribution's firewall list because that distribution's own hourly traffic alarm fired. Nothing else changes. See [34-cost-kill-switch](34-cost-kill-switch.md). |
 | **Domain entity** | A plain data type describing what is persisted. No behaviour, no I/O. Never appears in a contract. |
 | **Double** | Any stand-in for a real collaborator in a test: a fake, a stub, a mock. |
 | **Download link** | A short-lived signed GET URL a tool answers in place of a large JSON answer, when the call sends `returnDownloadLink: true`. A script downloads it with no token. |
+| **Held event** | An asynchronous event that arrives once and that a function at concurrency 0 could not run. It waits on an on-failure queue, and the kill-switch reopen replays it. |
 | **End-to-end suite** | Browser-driven tests against the real interface and a real backend. No faked API responses. |
 | **Entrypoint** | The transport-aware layer: request handler, worker, scheduled job, local host. |
 | **Confused deputy** | A proxy authorization server with one upstream client, open registration and an upstream sign-in cookie, which turns a silent login into a code for an attacker's client. The consent page is the control. |
@@ -31,6 +33,7 @@
 | **Install-script allowlist** | The per-project file naming every dependency with an install script as run or skip, with a reason. Package-manager scripts are off by default everywhere. |
 | **In-place update** | An infrastructure change that modifies a resource rather than replacing it. The only acceptable kind for a stateful resource. |
 | **Integration test** | A test of a repository against a real or emulated store. Not a test of business rules. |
+| **Kill switch** | The optional function that shuts the app down at a monthly spend limit: it records each previous value, sets the shut-down value, and sets a flag the infrastructure reads back. Only the owner reopens. See [34-cost-kill-switch](34-cost-kill-switch.md). |
 | **Load-bearing** | An argument or key part whose value actually changes the result — proven by mutating it and watching a test go red. |
 | **Mutation (testing)** | Deliberately breaking production code to confirm a test can fail. |
 | **Namespace** | A group of related endpoints. The first segment of an RPC path. |

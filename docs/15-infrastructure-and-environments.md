@@ -156,6 +156,10 @@ attribute.
   the traffic does. [29-hardening-that-costs-nothing](29-hardening-that-costs-nothing.md)
   § 1 covers the flat-rate plan that replaces those charges, and § 7 of the same file
   lists what still costs money.
+- An alert sends email; it stops nothing, and the provider has no hard spend cap. Where a
+  runaway bill would hurt more than an outage, add the optional
+  [34-cost-kill-switch](34-cost-kill-switch.md): it shuts the app down unattended at a
+  monthly limit, and closes one distribution when its own hourly traffic passes a limit.
 
 ---
 

@@ -364,6 +364,23 @@ Full rules in [32-mobile-delivery](32-mobile-delivery.md).
 - [ ] Device flows run one at a time on one device; the Android port map includes object
       storage.
 
+## 20. Cost kill switch (where adopted)
+
+[34-cost-kill-switch](34-cost-kill-switch.md). Walk this whenever a pull request adds a
+function, a queue mapping, a bucket, a firewall list or a distribution.
+
+- [ ] A new resource that bills by use carries `kill-switch = managed` and renders its
+      shut-down value from `kill_switch_engaged`.
+- [ ] A new queue mapping sets `enabled = !var.kill_switch_engaged`.
+- [ ] A new bucket that serves presigned URLs adds the deny module's statement to its
+      policy.
+- [ ] A new pay-as-you-go distribution has both traffic alarms; a plan distribution has
+      none.
+- [ ] A new function that an email or notification service invokes has an on-failure
+      destination on the held-events queue.
+- [ ] The kill-switch role still has no delete action.
+- [ ] No apply runs with `-refresh=false` while the switch can be engaged.
+
 ---
 
 ## When to run which section
@@ -378,7 +395,7 @@ Full rules in [32-mobile-delivery](32-mobile-delivery.md).
 | A client pull request | 9, 10, 11, 14, 15, 18 |
 | A mobile pull request | 17, 19, plus 7 for contract compatibility |
 | A mobile build, release or store change | 19 |
-| Infrastructure or pipeline only | 5, 12 |
+| Infrastructure or pipeline only | 5, 12, 20 |
 | A merge or rebase conflict in an append-only region | 13 |
 | A feature that links to an external console | 16 |
 | Before merging to the integration branch | all applicable |
